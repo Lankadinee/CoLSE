@@ -1,7 +1,6 @@
 import argparse
 import time
 from datetime import datetime
-from multiprocessing import Pool
 from pathlib import Path
 
 import numpy as np
@@ -10,7 +9,6 @@ from loguru import logger
 from tqdm import tqdm
 
 from colse.cdf_storage import CDFStorage
-from colse.copula_functions import get_theta
 from colse.copula_types import CopulaTypes
 from colse.custom_data_generator import CustomDataGen
 from colse.data_path import get_excel_path, get_log_path, get_model_path
@@ -19,7 +17,7 @@ from colse.divine_copula_dynamic_recursive import DivineCopulaDynamicRecursive
 from colse.emphirical_cdf import EMPMethod
 from colse.optimized_emp_cdf import OptimizedEmpiricalCDFModel
 from colse.q_error import qerror
-from colse.search_rotated_gumbel_copula_type import SearchGumbelCopulaType
+from colse.theta_storage import ThetaStorage
 from error_comp_network import ErrorCompensationNetwork
 
 current_dir = Path(__file__).resolve().parent
@@ -67,11 +65,13 @@ def main():
     QUERY_SIZE = None
     COLUMN_INDEXES = [i for i in range(dataset_type.get_no_of_columns())]
     NO_OF_COLUMNS = len(COLUMN_INDEXES)
-    QUERY_FILL_ALL = False
-    FIND_TC = False
-    DYN_COPULA_TYPES = False
+
+    COPULA_TYPE = CopulaTypes.GUMBEL
     CDF_STORAGE_CACHE = (
         f"{dataset_type}_{data_split}_data_sample_{max_unique_values}_max_25000"
+    )
+    THETA_STORAGE_CACHE = (
+        f"theta_cache_{dataset_type}_{COPULA_TYPE}_{NO_OF_COLUMNS}"
     )
     CDF_STORAGE_CACHE_OVERRIDE = True
 
@@ -146,45 +146,9 @@ def main():
     else:
         data_np = df.to_numpy().transpose()
 
-    theta_dict = {}
-    copula_type_dict = {} if DYN_COPULA_TYPES else None
-    copula_search = SearchGumbelCopulaType()
-    start_time_theta_calc = time.time()
-    iterable = []
-    ij_iterable = []
-    parellel = True
-    for i in range(NO_OF_COLUMNS):
-        for j in range(i + 1, NO_OF_COLUMNS):
-            copula_type = CopulaTypes.GUMBEL
-            if DYN_COPULA_TYPES:
-                copula_type = copula_search.predict(data_np[i, :], data_np[j, :])
-                logger.info("For Columns: ", i, j, " Copula Type: ", copula_type)
-                copula_type_dict[(i, j)] = copula_type
+    theta_dict = ThetaStorage(COPULA_TYPE, NO_OF_COLUMNS).get_theta(data_np, cache_name=THETA_STORAGE_CACHE)
 
-            iterable.append((copula_type, data_np[i, :], data_np[j, :]))
-            ij_iterable.append((i, j))
-            # theta = get_theta((copula_type, data_np[i, :], data_np[j, :]))
-            # theta_dict[(i, j)] = theta
-            # logger.info("For Columns: ", i, j, " Theta: ", theta)
-    # logger.info(ij_iterable)
-    if parellel:
-        logger.info("Parellel Dequantization")
-        with Pool() as pool:
-            results = pool.map(get_theta, iterable)
-    else:
-        results = [get_theta(i) for i in iterable]
-
-    # logger.info("Results: ", results)
-    theta_dict = {(i, j): val for val, (i, j) in zip(results, ij_iterable)}
-    # logger.info("Result Dict: ", theta_dict)
-
-    logger.info(
-        f"Time Taken for Theta Calculation: {time.time() - start_time_theta_calc}"
-    )
-
-    model = DivineCopulaDynamicRecursive(
-        theta_dict=theta_dict, copula_type_dict=copula_type_dict
-    )
+    model = DivineCopulaDynamicRecursive(theta_dict=theta_dict)
     # model.verbose = True
     full_zero_count = 0
     nan_count = 0
@@ -192,7 +156,6 @@ def main():
     dict_list = []
     time_taken_list = []
     time_taken_predict_cdf_list = []
-    # loop = tqdm(zip(X_cdf, X, y), total=X_cdf.shape[0])
     loop = tqdm(zip(X, y), total=X.shape[0])
     for query, y_act in loop:
         query = query.reshape(1, -1)
