@@ -1,7 +1,6 @@
-import json
 import os
-from multiprocessing import Pool
 import time
+from multiprocessing import Pool
 
 from loguru import logger
 
@@ -35,13 +34,21 @@ class ThetaStorage:
     def get_theta(self, data_np, cache_name=None):
         if cache_name is not None and os.path.exists(cache_name):
             logger.info(f"Loading theta from cache: {cache_name}")
-            return json.load(open(cache_name, "r"))
+            import pickle
+
+            with open(cache_name, "rb") as f:
+                return pickle.load(f)
         start_time_theta_calc = time.perf_counter()
         theta_dict = self._calculate_theta(data_np)
-        logger.info(f"Time Taken for Theta Calculation: {time.perf_counter() - start_time_theta_calc}")
+        logger.info(
+            f"Time Taken for Theta Calculation: {time.perf_counter() - start_time_theta_calc}"
+        )
         if cache_name is not None:
-            json.dump(theta_dict, open(cache_name, "w"))
+            import pickle
+
+            with open(cache_name, "wb") as f:
+                pickle.dump(theta_dict, f)
             logger.info(f"Saving theta to cache: {cache_name}")
-        
+
         logger.info(f"Result Dict: {theta_dict}")
         return theta_dict

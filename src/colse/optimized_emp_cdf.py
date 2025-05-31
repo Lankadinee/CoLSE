@@ -4,7 +4,7 @@ from colse.emphirical_cdf import EMPMethod
 from loguru import logger
 from scipy.stats import rankdata
 
-from cest.conversion.dtype_conversion import convert_to_low_precision_dtype
+from colse.dtype_conversion import convert_to_low_precision_dtype
 
 MAX_UNIQUE_VALUES = 25000
 
@@ -41,7 +41,6 @@ class OptimizedEmpiricalCDFModel(CDFBase):
         initial_length = np.sum(_value_counts)
         current_unique = len(_value_counts)
         if self.max_unique_values == "auto":
-            # self.max_unique_values = int(max(current_unique * 0.1, min(10000, current_unique)))
             self.max_unique_values = np.clip(min(int(current_unique*0.1), MAX_UNIQUE_VALUES), current_unique, MAX_UNIQUE_VALUES)
             logger.info(f"New max unique values: {self.max_unique_values}")
 

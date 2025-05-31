@@ -11,3 +11,4 @@ wheels/
 data/
 *.zip
 data.bk/*
+*.json
