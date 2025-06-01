@@ -9,11 +9,9 @@ from loguru import logger
 from tqdm import tqdm
 
 from colse.cdf_storage import CDFStorage
-
 from colse.copula_types import CopulaTypes
 from colse.custom_data_generator import CustomDataGen
 from colse.data_path import get_data_path, get_excel_path, get_log_path, get_model_path
-
 from colse.dataset_names import DatasetNames
 from colse.divine_copula_dynamic_recursive import DivineCopulaDynamicRecursive
 from colse.emphirical_cdf import EMPMethod
@@ -70,16 +68,13 @@ def main():
     NO_OF_COLUMNS = len(COLUMN_INDEXES)
 
     COPULA_TYPE = CopulaTypes.GUMBEL
-    CDF_STORAGE_CACHE = (
-        f"{dataset_type}_{data_split}_data_sample"
-    )
+    CDF_STORAGE_CACHE = f"{dataset_type}_{data_split}_data_sample"
     THETA_STORAGE_CACHE = (
         get_data_path("theta_cache")
         / f"{dataset_type}_{COPULA_TYPE}_{NO_OF_COLUMNS}.pkl"
     )
     EXCEL_FILE_PATH = (
-        get_excel_path()
-        / f"dvine_v1_{dataset_type.value}_{data_split}_sample.xlsx"
+        get_excel_path() / f"dvine_v1_{dataset_type.value}_{data_split}_sample.xlsx"
     )
     CDF_STORAGE_CACHE_OVERRIDE = True
 
@@ -204,7 +199,9 @@ def main():
         q_error = qerror(y_bar, y_act, no_of_rows=no_of_rows)
 
         if not IS_ERROR_COMP_TRAIN:
-            y_bar_2 =error_comp_model.inference(query=query, cdf=cdf_list, y_bar=y_bar)[0]
+            y_bar_2 = error_comp_model.inference(
+                query=query, cdf=cdf_list, y_bar=y_bar
+            )[0]
             q_error_2 = qerror(y_bar_2, y_act, no_of_rows=no_of_rows)
         else:
             q_error_2 = None
@@ -250,14 +247,20 @@ def main():
             if not IS_ERROR_COMP_TRAIN
             else None
         )
+
+        value_1_str = f"{value:.3f}"
+        value_2_str = f"{value_2:.3f}" if value_2 is not None else "N/A"
+
         if IS_ERROR_COMP_TRAIN:
-            logger.info(f"Percentile ({percentile:3d}th): {value}")
-            dict_list.append({"percentile": percentile, "value": value})
+            logger.info(f"Percentile ({percentile:3d}th): {value_1_str}")
+            dict_list.append({"percentile": percentile, "value": value_1_str})
         else:
-            logger.info(f"Percentile ({percentile:3d}th): Before: {value}, After: {value_2}")
             dict_list.append(
                 {"percentile": percentile, "before": value, "after": value_2}
             )
+        logger.info(
+            f"Percentile ({percentile:3d}th): copula_only: {value_1_str:>10}, copula+error_comp: {value_2_str:>10}"
+        )
 
     dict_list.append({"percentile": "", "value": ""})
     dict_list.append({"percentile": "NO_OF_ROWS", "value": NO_OF_ROWS})
