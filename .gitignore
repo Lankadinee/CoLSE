@@ -10,3 +10,5 @@ wheels/
 .venv
 data/
 *.zip
+data.bk/*
+*.json

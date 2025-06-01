@@ -69,6 +69,9 @@ def parse_args():
     parser.add_argument(
         "--train_test_split", type=float, default=0.8, help="Train test split ratio"
     )
+    parser.add_argument(
+        "--epochs", type=int, default=25, help="Number of epochs"
+    )
     return parser.parse_args()
 
 
@@ -456,15 +459,16 @@ def train_lw_nn(model_file, seed=42):
             best_valid_loss = valid_loss
             torch.save(get_state(), model_file)
 
-        """save best 50 percentile matrics"""
-        if metrics["median"] < best_50_percentile:
-            best_50_percentile = metrics["median"]
-            torch.save(
-                get_state(), model_file.parent / f"50_percentile_{model_file.name}"
-            )
-            L.info(
-                f"Best 50 percentile model saved to {model_file.parent / f'50_percentile_{model_file.name}'}"
-            )
+        # """save best 50 percentile matrics"""
+        # if metrics["median"] < best_50_percentile:
+        #     best_50_percentile = metrics["median"]
+        #     torch.save(
+        #         get_state(), model_file.parent / f"50_percentile_{model_file.name}"
+        #     )
+        #     L.info(
+        #         f"Best 50 percentile model saved to {model_file.parent / f'50_percentile_{model_file.name}'}"
+        #     )
+
 
         valid_time += time.time() - valid_stmp
 
