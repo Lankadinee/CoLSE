@@ -203,19 +203,12 @@ def main():
             continue
         q_error = qerror(y_bar, y_act, no_of_rows=no_of_rows)
 
-        print(f"Query: {query}, CDF: {cdf_list}, y_bar: {y_bar}, y_act: {y_act}")
-        y_bar_2 = (
-            error_comp_model.inference(query=query, cdf=cdf_list, y_bar=y_bar)[0]
-            if not IS_ERROR_COMP_TRAIN
-            else None
-        )
-        q_error_2 = (
-            qerror(y_bar_2, y_act, no_of_rows=no_of_rows)
-            if not IS_ERROR_COMP_TRAIN
-            else None
-        )
-
-        print(q_error, q_error_2)
+        if not IS_ERROR_COMP_TRAIN:
+            y_bar_2 =error_comp_model.inference(query=query, cdf=cdf_list, y_bar=y_bar)[0]
+            q_error_2 = qerror(y_bar_2, y_act, no_of_rows=no_of_rows)
+        else:
+            q_error_2 = None
+            y_bar_2 = None
 
         dict_list.append(
             {
