@@ -4,7 +4,9 @@ from colse.emphirical_cdf import EMPMethod
 from loguru import logger
 from scipy.stats import rankdata
 
+
 from colse.dtype_conversion import convert_to_low_precision_dtype
+
 
 MAX_UNIQUE_VALUES = 25000
 

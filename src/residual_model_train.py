@@ -469,6 +469,7 @@ def train_lw_nn(model_file, seed=42):
         #         f"Best 50 percentile model saved to {model_file.parent / f'50_percentile_{model_file.name}'}"
         #     )
 
+
         valid_time += time.time() - valid_stmp
 
         general_metrics = {

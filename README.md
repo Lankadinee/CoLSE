@@ -1,5 +1,6 @@
 # CoLSE - Copula based Learned Selectivity Estimator
 
+
 CoLSE is a machine learning-based cardinality estimation system that uses copula models to capture dependencies between database columns for accurate selectivity estimation.
 
 ## Installation Guide
@@ -54,3 +55,4 @@ To execute the full pipeline (download, train, and test):
 just all
 ```
 This will sequentially download data, train the model, and test it.
+

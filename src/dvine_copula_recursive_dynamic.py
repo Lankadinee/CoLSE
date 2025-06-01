@@ -9,9 +9,11 @@ from loguru import logger
 from tqdm import tqdm
 
 from colse.cdf_storage import CDFStorage
+
 from colse.copula_types import CopulaTypes
 from colse.custom_data_generator import CustomDataGen
 from colse.data_path import get_data_path, get_excel_path, get_log_path, get_model_path
+
 from colse.dataset_names import DatasetNames
 from colse.divine_copula_dynamic_recursive import DivineCopulaDynamicRecursive
 from colse.emphirical_cdf import EMPMethod
@@ -36,7 +38,7 @@ def parse_args():
         description="Run Divine Copula Dynamic Recursive Test"
     )
     parser.add_argument(
-        "--data_split", type=str, default="train", help="Path to the testing Excel file"
+        "--data_split", type=str, default="test", help="Path to the testing Excel file"
     )
     parser.add_argument(
         "--dataset_name", type=str, default="forest", help="Name of the dataset"
@@ -157,6 +159,7 @@ def main():
     )
 
     model = DivineCopulaDynamicRecursive(theta_dict=theta_dict)
+
     # model.verbose = True
     full_zero_count = 0
     nan_count = 0
