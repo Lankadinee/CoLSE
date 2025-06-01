@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 import time
 from pathlib import Path
@@ -36,7 +37,7 @@ L = logger
 """
 AVI feature added
 """
-
+args = None
 
 # convert parameter dict of lw(nn)
 
@@ -60,7 +61,6 @@ def parse_args():
         "--dataset_name", type=str, default="forest", help="Name of the dataset"
     )
     parser.add_argument("--bs", type=int, default=32, help="Batch size")
-    parser.add_argument("--epochs", type=int, default=25, help="Number of epochs")
     parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
     parser.add_argument(
         "--hid_units", type=str, default="256_256_128_64", help="Hidden units"
@@ -143,13 +143,12 @@ def evaluate(preds, labels, total_rows=-1):
         "95th": np.percentile(errors, 95),
         "90th": np.percentile(errors, 90),
         "median": np.median(errors),
-        "mean": np.mean(errors),
-        # "gmean": gmean(errors),
+        "mean": np.mean(errors)
     }
 
     if total_rows > 0:
         metrics["rms"] = rmserror(preds, labels, total_rows)
-    L.info(f"{metrics}")
+    L.info(f"{json.dumps(metrics)}")
     return np.array(errors), metrics
 
 
@@ -618,5 +617,5 @@ if __name__ == "__main__":
     time.sleep(3)
     model_path = get_model_path(args.dataset)
     model_file = model_path / f"error_comp_model.pt"
-    train_lw_nn(model_file)
+    # train_lw_nn(model_file)
     # evaluate_lw_nn(model_file)

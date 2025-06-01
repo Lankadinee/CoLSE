@@ -203,6 +203,7 @@ def main():
             continue
         q_error = qerror(y_bar, y_act, no_of_rows=no_of_rows)
 
+        print(f"Query: {query}, CDF: {cdf_list}, y_bar: {y_bar}, y_act: {y_act}")
         y_bar_2 = (
             error_comp_model.inference(query=query, cdf=cdf_list, y_bar=y_bar)
             if not IS_ERROR_COMP_TRAIN
@@ -213,6 +214,8 @@ def main():
             if not IS_ERROR_COMP_TRAIN
             else None
         )
+
+        print(q_error, q_error_2)
 
         dict_list.append(
             {
@@ -231,10 +234,10 @@ def main():
             }
         )
 
-    percentiles_values = [10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 99, 100]
-    for percentile in percentiles_values:
-        value = np.percentile(time_taken_list, percentile)
-        logger.info(f"Time Percentile ({percentile}th): {value}")
+    # percentiles_values = [10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 99, 100]
+    # for percentile in percentiles_values:
+    #     value = np.percentile(time_taken_list, percentile)
+    #     logger.info(f"Time Percentile ({percentile}th): {value}")
 
     logger.info(f"Time Taken: {np.average(time_taken_list) * 1000} ms")
     logger.info(
@@ -245,6 +248,8 @@ def main():
 
     dict_list = []
     percentiles_values = [50, 90, 95, 99, 100]
+    logger.info("-" * 40)
+    logger.info(f"Percentiles for q_error")
     for percentile in percentiles_values:
         value = np.percentile(df1["q_error"], percentile)
         value_2 = (
@@ -253,10 +258,10 @@ def main():
             else None
         )
         if IS_ERROR_COMP_TRAIN:
-            logger.info(f"Percentile ({percentile}th): {value}")
+            logger.info(f"Percentile ({percentile:3d}th): {value}")
             dict_list.append({"percentile": percentile, "value": value})
         else:
-            logger.info(f"Percentile ({percentile}th): Before: {value}, After: {value_2}")
+            logger.info(f"Percentile ({percentile:3d}th): Before: {value}, After: {value_2}")
             dict_list.append(
                 {"percentile": percentile, "before": value, "after": value_2}
             )
@@ -271,7 +276,7 @@ def main():
         df1.to_excel(writer, sheet_name="Results")
         df2.to_excel(writer, sheet_name="Percentiles")
 
-    logger.info(f"---------------------------------------")
+    logger.info("-" * 40)
     logger.info(f"Query Size: {df1.shape[0]}")
     logger.info(f"Full Zero Count: {full_zero_count}")
     logger.info(f"NaN Count: {nan_count}")

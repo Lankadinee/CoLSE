@@ -44,7 +44,7 @@ class OptimizedEmpiricalCDFModel(CDFBase):
         current_unique = len(_value_counts)
         if self.max_unique_values == "auto":
             self.max_unique_values = np.clip(min(int(current_unique*0.1), MAX_UNIQUE_VALUES), current_unique, MAX_UNIQUE_VALUES)
-            logger.info(f"New max unique values: {self.max_unique_values}")
+            # logger.info(f"New max unique values: {self.max_unique_values}")
 
         if current_unique > self.max_unique_values:
             """randomly sample indexes within current_length"""
@@ -53,7 +53,7 @@ class OptimizedEmpiricalCDFModel(CDFBase):
             )
             self._unique_values = self._unique_values[indexes]
             _value_counts = _value_counts[indexes]
-            logger.info(f"Reduced unique values from {current_unique} to {self.max_unique_values}")
+            # logger.info(f"Reduced unique values from {current_unique} to {self.max_unique_values}")
 
         self._length = np.sum(_value_counts) + 1
         self._rank = self._empirical_cdf(self._unique_values)

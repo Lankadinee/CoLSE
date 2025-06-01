@@ -3,6 +3,9 @@ import torch
 import torch.nn.functional as F
 from loguru import logger
 
+
+from colse.custom_data_generator import CustomDataGen
+from colse.dataset_names import DatasetNames
 from colse.error_comp_model import ErrorCompModel
 from colse.res_utils import decode_label, encode_label, multiply_pairs_norm
 
@@ -94,3 +97,24 @@ class ErrorCompensationNetwork:
 
     def predict(self, x):
         return self.model(x).reshape(-1, self.output_len)
+
+
+
+if __name__ == "__main__":
+    from colse.data_path import get_model_path
+    dataset_type = DatasetNames("forest")
+    model_file = get_model_path() / f"error_comp_model.pt"
+    dataset = CustomDataGen(
+        no_of_rows=None,
+        no_of_queries=None,
+        dataset_type=dataset_type,
+        data_split="test",
+        selected_cols=None,
+        scalar_type="min_max",  # 'min_max' or 'standard
+        dequantize=False,
+        seed=1,
+        is_range_queries=True,
+        verbose=False,
+    )
+    error_comp_model_path = get_model_path(dataset_type.value) / "error_comp_model.pt"
+    error_comp_model = ErrorCompensationNetwork(error_comp_model_path, dataset)
