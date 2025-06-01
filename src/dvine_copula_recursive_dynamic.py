@@ -205,7 +205,7 @@ def main():
 
         print(f"Query: {query}, CDF: {cdf_list}, y_bar: {y_bar}, y_act: {y_act}")
         y_bar_2 = (
-            error_comp_model.inference(query=query, cdf=cdf_list, y_bar=y_bar)
+            error_comp_model.inference(query=query, cdf=cdf_list, y_bar=y_bar)[0]
             if not IS_ERROR_COMP_TRAIN
             else None
         )
