@@ -69,9 +69,7 @@ def parse_args():
     parser.add_argument(
         "--train_test_split", type=float, default=0.8, help="Train test split ratio"
     )
-    parser.add_argument(
-        "--epochs", type=int, default=25, help="Number of epochs"
-    )
+    parser.add_argument("--epochs", type=int, default=25, help="Number of epochs")
     return parser.parse_args()
 
 
@@ -143,7 +141,7 @@ def evaluate(preds, labels, total_rows=-1):
         "95th": np.percentile(errors, 95),
         "90th": np.percentile(errors, 90),
         "median": np.median(errors),
-        "mean": np.mean(errors)
+        "mean": np.mean(errors),
     }
 
     if total_rows > 0:
@@ -468,7 +466,6 @@ def train_lw_nn(model_file, seed=42):
         #         f"Best 50 percentile model saved to {model_file.parent / f'50_percentile_{model_file.name}'}"
         #     )
 
-
         valid_time += time.time() - valid_stmp
 
         general_metrics = {
@@ -578,13 +575,16 @@ def evaluate_lw_nn(model_path):
     valid_pred_abs_np_dec = np.maximum(
         np.round(decode_label(F.relu(valid_preds[:, 2]).detach().cpu().numpy())), 0.0
     )
-    valid_ybar_np_dec = np.maximum(
-        np.round(decode_label(valid_y_bar.detach().cpu().numpy())), 0.0
-    )
+    # valid_ybar_np_dec = np.maximum(
+    #     np.round(decode_label(valid_y_bar.detach().cpu().numpy())), 0.0
+    # )
+
+    valid_ybar_np_dec = np.maximum(np.round(rd.y_bar * rd.no_of_rows), 0.0)
 
     valid_preds = valid_pred_abs_np_dec * valid_preds_sign + valid_ybar_np_dec
     df_dict["valid_pred_dec"] = valid_pred_abs_np_dec
     df_dict["valid_preds"] = valid_preds
+    df_dict["selectivity"] = valid_preds / rd.no_of_rows
 
     L.info("Q-Error on validation set:")
     errors, metrics = evaluate(valid_preds, gt)
@@ -618,4 +618,4 @@ if __name__ == "__main__":
     model_path = get_model_path(args.dataset)
     model_file = model_path / f"error_comp_model.pt"
     # train_lw_nn(model_file)
-    # evaluate_lw_nn(model_file)
+    evaluate_lw_nn(model_file)

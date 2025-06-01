@@ -179,7 +179,7 @@ def main():
         col_indices = [i + 1 for i in non_zero_non_one_indices]
         cdf_list = reshaped_cdf_list[non_zero_non_one_indices].reshape(-1)
         no_of_cols_for_this_query = len(col_indices)
-        loop.set_description(f"No of Columns: {no_of_cols_for_this_query}")
+        loop.set_description(f"#cols: {no_of_cols_for_this_query:2d}")
         y_bar = None
 
         start_time = time.time()
@@ -202,7 +202,7 @@ def main():
             y_bar_2 = error_comp_model.inference(
                 query=query, cdf=cdf_list, y_bar=y_bar
             )[0]
-            q_error_2 = qerror(y_bar_2, y_act, no_of_rows=no_of_rows)
+            q_error_2 = qerror(y_bar_2, y_act, no_of_rows=None)
         else:
             q_error_2 = None
             y_bar_2 = None

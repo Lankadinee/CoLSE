@@ -19,7 +19,7 @@ class Args:
             get_data_path() / "excels/dvine_v1_forest_train_sample_auto_max_25000.xlsx"
         )
         self.test_excel_path = (
-            get_data_path() / "excels/dvine_v1_forest_test_sample_auto_max_25000.xlsx"
+            get_data_path() / "excels/dvine_v1_forest_test_sample.xlsx"
         )
 
         # overwrite parameters from user

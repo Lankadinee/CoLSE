@@ -93,10 +93,11 @@ class ErrorCompensationNetwork:
 
         # Denormalize y_bar
         y_bar_actual = y_bar * self.no_of_rows
+        y_bar_rounded = np.maximum(np.round(y_bar_actual), 0.0)
 
         # 4. Final prediction
         selectivity = (
-            v_preds_abs_d * valid_preds_sign + y_bar_actual
+            v_preds_abs_d * valid_preds_sign + y_bar_rounded
         ) / self.no_of_rows
         return selectivity
 
@@ -110,25 +111,3 @@ class ErrorCompensationNetwork:
     def predict(self, x):
         # Run model forward pass
         return self.model(x).reshape(-1, self.output_len)
-
-
-if __name__ == "__main__":
-    from colse.data_path import get_model_path
-
-    # Example usage for testing
-    dataset_type = DatasetNames("forest")
-    model_file = get_model_path() / f"error_comp_model.pt"
-    dataset = CustomDataGen(
-        no_of_rows=None,
-        no_of_queries=None,
-        dataset_type=dataset_type,
-        data_split="test",
-        selected_cols=None,
-        scalar_type="min_max",  # 'min_max' or 'standard
-        dequantize=False,
-        seed=1,
-        is_range_queries=True,
-        verbose=False,
-    )
-    error_comp_model_path = get_model_path(dataset_type.value) / "error_comp_model.pt"
-    error_comp_model = ErrorCompensationNetwork(error_comp_model_path, dataset)
