@@ -1,12 +1,10 @@
 import numpy as np
-from colse.cdf_base import CDFBase
-from colse.emphirical_cdf import EMPMethod
 from loguru import logger
 from scipy.stats import rankdata
 
-
+from colse.cdf_base import CDFBase
 from colse.dtype_conversion import convert_to_low_precision_dtype
-
+from colse.emphirical_cdf import EMPMethod
 
 MAX_UNIQUE_VALUES = 25000
 
@@ -43,8 +41,12 @@ class OptimizedEmpiricalCDFModel(CDFBase):
         initial_length = np.sum(_value_counts)
         current_unique = len(_value_counts)
         if self.max_unique_values == "auto":
+            """
+            if the number of unique values is less than 10% of the total number of values, then use the total number of values
+            else use the number of unique values
+            """
             self.max_unique_values = np.clip(min(int(current_unique*0.1), MAX_UNIQUE_VALUES), current_unique, MAX_UNIQUE_VALUES)
-            # logger.info(f"New max unique values: {self.max_unique_values}")
+            logger.info(f"New max unique values: {self.max_unique_values}")
 
         if current_unique > self.max_unique_values:
             """randomly sample indexes within current_length"""
@@ -53,7 +55,7 @@ class OptimizedEmpiricalCDFModel(CDFBase):
             )
             self._unique_values = self._unique_values[indexes]
             _value_counts = _value_counts[indexes]
-            # logger.info(f"Reduced unique values from {current_unique} to {self.max_unique_values}")
+            logger.info(f"Reduced unique values from {current_unique} to {self.max_unique_values}")
 
         self._length = np.sum(_value_counts) + 1
         self._rank = self._empirical_cdf(self._unique_values)

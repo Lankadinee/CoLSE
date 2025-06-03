@@ -1,16 +1,17 @@
-from datetime import datetime
 import json
 from pathlib import Path
 from typing import Tuple
 
 import numpy as np
 import pandas as pd
-from colse.datasets.params import ROW_PREFIX
-from colse.data_path import get_data_path
-from colse.cat_transform import DeqDataTypes, DeQuantize
-from colse.df_utils import load_dataframe
 from loguru import logger
 from tqdm import tqdm
+
+from colse.cat_transform import DeqDataTypes, DeQuantize
+from colse.data_path import get_data_path
+from colse.datasets.params import ROW_PREFIX
+from colse.df_utils import load_dataframe
+from colse.spline_dequantizer import SplineDequantizer
 
 current_dir = Path(__file__).parent
 dataset_dir = get_data_path() / "dmv/"
@@ -25,20 +26,22 @@ def generate_dataset(**kwargs):
 
     logger.info("Loading dmv dataset...")
 
-    df_path = dataset_dir / ("dmv_dequantized.parquet" if IS_DEQUANTIZE else "dmv.csv")
+    df_path = dataset_dir / (
+        "dmv_dequantized_v2.parquet" if IS_DEQUANTIZE else "dmv.csv"
+    )
     df = load_dataframe(df_path)
     logger.info("DMV dataframe loaded.")
 
     nrows = df.shape[0] if nrows is None else nrows
 
     # if IS_DEQUANTIZE:
-    
+
     #     df["Reg_Valid_Date"] = pd.to_datetime(df["Reg_Valid_Date"], format="%Y-%m-%d")
 
     #     """find minimum date and subtract from all dates"""
     #     min_date = min(df["Reg_Valid_Date"].min())
     #     print(min_date)
-        
+
     #     df["Reg_Valid_Date"] = (df["Reg_Valid_Date"] - min_date).dt.days
 
     logger.info(f"Convert the first {nrows} rows to numpy array")
@@ -57,7 +60,9 @@ def generate_dataset(**kwargs):
 
     logger.info("Stacking the attributes into a 2D array")
     # Stack the attributes into a 2D array
-    data = np.column_stack((attr1, attr2, attr3, attr4, attr5, attr6, attr7, attr8, attr9, attr10, attr11))
+    data = np.column_stack(
+        (attr1, attr2, attr3, attr4, attr5, attr6, attr7, attr8, attr9, attr10, attr11)
+    )
 
     new_df = pd.DataFrame(data, columns=[f"{ROW_PREFIX}{i}" for i in range(1, 12)])
 
@@ -72,7 +77,6 @@ def generate_dataset(**kwargs):
 
     # df = df.astype(np.float64)
     return new_df
-
 
 
 def get_queries_dmv(**kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -147,15 +151,21 @@ def get_queries_dmv(**kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         # query_l = query_l.astype(np.float64)
         # query_r = query_r.astype(np.float64)
         query_l, query_r = query_value_mapper(query_l, query_r)
-        return query_l.astype(np.float64), query_r.astype(np.float64), true_card.astype(np.float64)
+        return (
+            query_l.astype(np.float64),
+            query_r.astype(np.float64),
+            true_card.astype(np.float64),
+        )
 
     return query_l, query_r, true_card
 
 
-def query_value_mapper(query_l, query_r):
+def query_value_mapper_bk(query_l, query_r):
     df = load_dataframe(dataset_dir / "dmv.csv")
 
-    quant_dict = DeQuantize.get_dequantizable_columns(df, col_list_to_be_dequantized=None)
+    quant_dict = DeQuantize.get_dequantizable_columns(
+        df, col_list_to_be_dequantized=None
+    )
     all_cols = len(list(df.columns))
     loop = tqdm(enumerate(list(df.columns)), total=all_cols)
     for col_id, col_name in loop:
@@ -171,11 +181,67 @@ def query_value_mapper(query_l, query_r):
             elif quant_dict[col_name].data_type == DeqDataTypes.DISCRETE:
                 for q_l, q_r in zip(query_l, query_r):
                     q_l[col_id] = (
-                        dequantize.get_mapping(q_l[col_id]) if q_l[col_id] not in [-np.inf, "-inf"] else -np.inf
+                        dequantize.get_mapping(q_l[col_id])
+                        if q_l[col_id] not in [-np.inf, "-inf"]
+                        else -np.inf
                     )
-                    q_r[col_id] = dequantize.get_mapping(q_l[col_id]) if q_r[col_id] not in [np.inf, "inf"] else np.inf
+                    q_r[col_id] = (
+                        dequantize.get_mapping(q_l[col_id])
+                        if q_r[col_id] not in [np.inf, "inf"]
+                        else np.inf
+                    )
             else:
-                raise ValueError(f"Data type {quant_dict[col_name].data_type} not supported")
+                raise ValueError(
+                    f"Data type {quant_dict[col_name].data_type} not supported"
+                )
+
+    return query_l, query_r
+
+
+# New method
+def query_value_mapper(query_l, query_r):
+    df = load_dataframe(dataset_dir / "dmv.csv")
+
+    quant_dict = DeQuantize.get_dequantizable_columns(
+        df, col_list_to_be_dequantized=None
+    )
+    all_cols = list(df.columns)
+    all_cols_len = len(all_cols)
+
+    dequantizer = SplineDequantizer(M=10000)
+    dequantizer.fit(df, columns=all_cols)
+
+    loop = tqdm(enumerate(all_cols), total=all_cols_len)
+    for col_id, col_name in loop:
+        loop.set_description(f"Mapping values v2 > {col_name:25}")
+
+        if quant_dict[col_name].is_dequantizable:
+            if quant_dict[col_name].data_type == DeqDataTypes.CATEGORICAL:
+                for q_l, q_r in zip(query_l, query_r):
+                    if q_l[col_id] == q_r[col_id]:
+                        q_l[col_id], q_r[col_id] = dequantizer.get_interval(
+                            col_name, q_l[col_id]
+                        )
+                    # else:
+                    #     logger.error(f"Query value {q_l[col_id]} and {q_r[col_id]} are not equal")
+                    #     raise ValueError(f"Query value {q_l[col_id]} and {q_r[col_id]} are not equal")
+
+            elif quant_dict[col_name].data_type == DeqDataTypes.DISCRETE:
+                for q_l, q_r in zip(query_l, query_r):
+                    q_l[col_id] = (
+                        dequantizer.get_interval(q_l[col_id])[0]
+                        if q_l[col_id] not in [-np.inf, "-inf"]
+                        else -np.inf
+                    )
+                    q_r[col_id] = (
+                        dequantizer.get_interval(q_l[col_id])[1]
+                        if q_r[col_id] not in [np.inf, "inf"]
+                        else np.inf
+                    )
+            else:
+                raise ValueError(
+                    f"Data type {quant_dict[col_name].data_type} not supported"
+                )
 
     return query_l, query_r
 
@@ -210,13 +276,20 @@ def get_sample_queries(no_of_queries, queried_columns: list = None, no_inf=True)
     selected_col_indexes = []
     for col_index in range(no_of_cols):
         if col_index in queried_columns:
-            col_sample = np.array([np.random.choice(unique_values_dict[col_index], no_of_queries) for _ in range(2)])
+            col_sample = np.array(
+                [
+                    np.random.choice(unique_values_dict[col_index], no_of_queries)
+                    for _ in range(2)
+                ]
+            )
             col_sample_sorted = np.sort(col_sample, axis=0)
             ub_queries, lb_queries = col_sample_sorted[1, :], col_sample_sorted[0, :]
         else:
             if no_inf:
                 continue
-            ub_queries, lb_queries = np.array([+np.inf] * no_of_queries), np.array([-np.inf] * no_of_queries)
+            ub_queries, lb_queries = np.array([+np.inf] * no_of_queries), np.array(
+                [-np.inf] * no_of_queries
+            )
         selected_col_indexes.append(col_index)
         query_l = np.vstack((query_l, lb_queries)) if query_l.size else lb_queries
         query_r = np.vstack((query_r, ub_queries)) if query_r.size else ub_queries

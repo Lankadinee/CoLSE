@@ -14,7 +14,6 @@ def qerror(est_card, card, no_of_rows=None):
     if est_card == 0:
         return card
     if card == 0:
-        assert False, "card is 0"
         return est_card
     if est_card > card:
         return est_card / card
