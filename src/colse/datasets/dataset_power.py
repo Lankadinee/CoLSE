@@ -23,6 +23,7 @@ def generate_dataset(**kwargs):
 
     """ Load dataset"""
     df_path = dataset_dir / ("original_dequantized_all.csv" if IS_DEQUANTIZE else "original.csv")
+    # df_path = dataset_dir / "original_dequantized_v2.parquet"
     logger.info(f"Loading power dataset from: {df_path}")
     df = load_dataframe(df_path)
     # df = df[df['Voltage'] > 200]

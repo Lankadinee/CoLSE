@@ -107,7 +107,7 @@ def get_queries_census(**kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         query_r.append(np.array(ub_list))
 
     "Load true cardinality"
-    labels = load_dataframe(dataset_dir / f"label_{data_split}.csv")
+    labels = load_dataframe(dataset_dir / f"label_census13_{data_split}.csv")
     true_card = labels["cardinality"].to_numpy().astype(int)
 
     # if data_split == "train":

@@ -115,7 +115,9 @@ class OptimizedEmpiricalCDFModel(CDFBase):
         return positive_index, negative_index
 
     def _get_cdf(self, index):
-        return self.cum_sum_array[index] / self._length
+        cdf = self.cum_sum_array[index] / self._length
+        assert cdf >= 0 and cdf <= 1, f"cdf: {cdf} is not in the range [0, 1]"
+        return cdf
 
     def _get_previous_cdf(self, index):
         current_rank_value = self._rank[index]
@@ -143,6 +145,7 @@ class OptimizedEmpiricalCDFModel(CDFBase):
                     return self._get_cdf(positive_index)
                 positive_cdf = self._get_cdf(positive_index)
                 negative_cdf = self._get_cdf(negative_index)
+                assert positive_cdf >= negative_cdf, f"positive_cdf: {positive_cdf} < negative_cdf: {negative_cdf}"
                 relative_cdf = negative_cdf + (positive_cdf - negative_cdf) * (
                     value - self._unique_values[negative_index]
                 ) / (

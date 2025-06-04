@@ -26,9 +26,10 @@ def generate_dataset(**kwargs):
 
     logger.info("Loading dmv dataset...")
 
-    df_path = dataset_dir / (
-        "dmv_dequantized_v2.parquet" if IS_DEQUANTIZE else "dmv.csv"
-    )
+    # df_path = dataset_dir / (
+    #     "dmv_dequantized_v2.parquet" if IS_DEQUANTIZE else "dmv.csv"
+    # )
+    df_path = dataset_dir / "dmv_dequantized.parquet"
     df = load_dataframe(df_path)
     logger.info("DMV dataframe loaded.")
 

@@ -617,5 +617,5 @@ if __name__ == "__main__":
     time.sleep(3)
     model_path = get_model_path(args.dataset)
     model_file = model_path / f"error_comp_model.pt"
-    # train_lw_nn(model_file)
-    evaluate_lw_nn(model_file)
+    train_lw_nn(model_file)
+    # evaluate_lw_nn(model_file)
