@@ -27,6 +27,10 @@ class OptimizedEmpiricalCDFModel(CDFBase):
             else None
         )
         self.max_unique_values = kwargs.get("max_unique_values", np.inf)
+        self._max_unique_value = None
+        self._max_unique_index = None
+        self._min_unique_value = None
+        self._min_unique_index = None
         logger.info(f"Max unique values: {self.max_unique_values}")
 
     def get_model_size(self):
@@ -79,6 +83,19 @@ class OptimizedEmpiricalCDFModel(CDFBase):
         if self._enable_low_precision:
             self.cum_sum_array = convert_to_low_precision_dtype(self.cum_sum_array)
             self._unique_values = convert_to_low_precision_dtype(self._unique_values)
+
+        """Store the maximum unique value and its index for quick access."""
+        max_index = np.argmax(self._unique_values)
+        self._max_unique_value = self._unique_values[max_index]
+        self._max_unique_index = max_index
+        logger.info(f"max_unique_value: {self._max_unique_value} | max_unique_index: {self._max_unique_index}")
+
+        """Store the minimum unique value and its index for quick access."""
+        min_index = np.argmin(self._unique_values)
+        self._min_unique_value = self._unique_values[min_index]
+        self._min_unique_index = min_index
+
+        logger.info(f"max_unique_value: {self._max_unique_value} | min_unique_value: {self._min_unique_value}")
 
     def _get_length(self, data):
         if isinstance(data, list):
@@ -138,9 +155,16 @@ class OptimizedEmpiricalCDFModel(CDFBase):
                 self._current_index = self._get_closest_index(value)
                 return self._get_cdf(self._current_index)
             elif self._emp_method == EMPMethod.RELATIVE:
+                # logger.info(f"value: {value}")
+                if value > self._max_unique_value:
+                    return 1.0
+                if value < self._min_unique_value:
+                    return 0.0
+
                 positive_index, negative_index = (
                     self._get_closest_positive_and_negative_index(value)
                 )
+                # logger.info(f"positive_index: {positive_index} | negative_index: {negative_index}")
                 if positive_index == negative_index:
                     return self._get_cdf(positive_index)
                 positive_cdf = self._get_cdf(positive_index)
