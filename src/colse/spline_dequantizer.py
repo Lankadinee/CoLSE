@@ -1,8 +1,6 @@
-from typing import Tuple
-
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_integer_dtype
+from pandas.api.types import is_numeric_dtype
 from scipy.interpolate import PchipInterpolator
 
 
@@ -14,8 +12,8 @@ class SplineDequantizer:
 
     New methods added:
       • get_continuous_interval(column, original_value)
-           → returns the continuous [low, high) interval in [0,1) corresponding to a single
-             old-value (e.g. a category or discrete integer).
+           → returns the continuous [low, high) interval on the original value scale
+             corresponding to a given value. If the value was unseen but integer, interpolate neighbors.
       • get_continuous_intervals(column, original_values)
            → returns a list of [low, high) intervals for each value in the iterable original_values.
     """
@@ -43,18 +41,16 @@ class SplineDequantizer:
             - grid_z  : M linearly spaced points between min and max unique values
             - grid_c  : spline_cdf(grid_z), used for fast inversion
         """
-        if is_integer_dtype(x):
+        if is_numeric_dtype(x):
             uniques = np.sort(x.dropna().unique())
             K = len(uniques)
             mapping = {val: idx for idx, val in enumerate(uniques)}
             codes = x.map(mapping).values
             N = len(codes)
-            # Histogram on codes
             counts = np.bincount(codes, minlength=K)
             p = counts.astype(np.float64) / float(N)
-            cdf_vals = np.cumsum(p)  # length K
-            # Use unique integer values as z_b positions
-            z_b = uniques.astype(np.float64)  # shape (K,)
+            cdf_vals = np.cumsum(p)
+            z_b = uniques.astype(np.float64)
         else:
             codes, uniques = pd.factorize(x, sort=True)
             if (codes < 0).any():
@@ -67,25 +63,18 @@ class SplineDequantizer:
             counts = np.bincount(codes, minlength=K)
             p = counts.astype(np.float64) / float(N)
             cdf_vals = np.cumsum(p)
-            # Use integer indices as z_b for categorical values
             z_b = np.arange(K, dtype=np.float64)
 
-        # Build CDF boundary array (for interval lookup)
-        # For simplicity, we treat cdf_vals[i] as CDF at z_b[i]
-        # We'll use these for sampling and spline knot points.
-
-        # Fit PCHIP spline for CDF(z)
         spline_cdf = PchipInterpolator(z_b, cdf_vals, extrapolate=False)
-        # Build grid on value scale
         grid_z = np.linspace(z_b[0], z_b[-1], self.M, dtype=np.float64)
         grid_c = spline_cdf(grid_z)
-        # Store parameters
         self.dequantizers[col_name] = {
             "uniques": uniques,
             "K": K,
             "mapping": mapping,
             "cdf_vals": cdf_vals,
             "z_b": z_b,
+            "spline_cdf": spline_cdf,
             "grid_z": grid_z,
             "grid_c": grid_c,
         }
@@ -111,27 +100,23 @@ class SplineDequantizer:
         Returns an array of shape (N,) with values on the original scale of z_b.
         """
         params = self.dequantizers[col_name]
-        uniques = params["uniques"]
-        K = params["K"]
         mapping = params["mapping"]
-        cdf_vals = params["cdf_vals"]
         z_b = params["z_b"]
         grid_z = params["grid_z"]
         grid_c = params["grid_c"]
-        # Map to index codes
-        try:
-            codes = x.map(mapping).values
-        except Exception:
-            unseen = x[~x.isin(uniques)].unique().tolist()
+        cdf_vals = params["cdf_vals"]
+
+        codes = x.map(mapping)
+        if codes.isna().any():
+            unseen = x[codes.isna()].unique().tolist()
             raise ValueError(
                 f"Column '{col_name}' contains values not seen during fit: {unseen}"
             )
-        # For each code i, CDF interval is [cdf_vals[i-1] (or 0), cdf_vals[i]]
+        codes = codes.values.astype(int)
+
         lows = np.concatenate(([0.0], cdf_vals[:-1]))[codes]
         highs = cdf_vals[codes]
-        # Draw uniform random v in [lows, highs]
         v = np.random.uniform(lows, highs)
-        # Invert CDF: z = interp(v, grid_c, grid_z)
         z = np.interp(v, grid_c, grid_z)
         return z
 
@@ -147,29 +132,40 @@ class SplineDequantizer:
             result[col] = self._transform_single_column(df[col], col)
         return result
 
-    def get_continuous_interval(
-        self, col_name: str, original_value
-    ) -> Tuple[float, float]:
+    def get_continuous_interval(self, col_name: str, original_value) -> (float, float):
         """
         Given one old-data value, return the continuous interval [low, high)
-        on the original value scale corresponding to that value.
+        on the original value scale corresponding to that value. If unseen integer,
+        interpolate neighbors; otherwise require seen.
         """
         if col_name not in self.dequantizers:
             raise KeyError(f"Column '{col_name}' was not fit. Call fit(...) first.")
         params = self.dequantizers[col_name]
-        uniques = params["uniques"]
-        K = params["K"]
         mapping = params["mapping"]
-        cdf_vals = params["cdf_vals"]
         z_b = params["z_b"]
-        if original_value not in mapping:
+
+        if original_value in mapping:
+            idx = mapping[original_value]
+            low_z = z_b[idx]
+            high_z = z_b[idx + 1] if idx + 1 < len(z_b) else z_b[idx]
+            return (low_z, high_z)
+        # Unseen: must be integer for interpolation
+        try:
+            val = int(original_value)
+        except:
             raise ValueError(
-                f"Value {original_value!r} not found in column '{col_name}' (fit saw {len(uniques)} uniques)."
+                f"Value {original_value!r} not valid for column '{col_name}'."
             )
-        idx = mapping[original_value]
-        low_cdf = cdf_vals[idx - 1] if idx > 0 else 0.0
-        high_cdf = cdf_vals[idx]
-        # Corresponding z interval is [z_b[idx-1], z_b[idx]] (or single point if idx=0)
-        low_z = z_b[idx - 1] if idx > 0 else z_b[0]
-        high_z = z_b[idx]
+        if not is_numeric_dtype(type(val)):
+            raise ValueError(
+                f"Unseen non-integer value {original_value!r} for column '{col_name}'."
+            )
+        if val <= z_b[0]:
+            return (z_b[0], z_b[1] if len(z_b) > 1 else z_b[0])
+        if val >= z_b[-1]:
+            return (z_b[-2] if len(z_b) > 1 else z_b[-1], z_b[-1])
+        right_idx = np.searchsorted(z_b, val)
+        left_idx = right_idx - 1
+        low_z = z_b[left_idx]
+        high_z = z_b[right_idx]
         return (low_z, high_z)

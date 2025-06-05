@@ -4,17 +4,19 @@ from typing import Tuple
 
 import numpy as np
 import pandas as pd
-from colse.datasets.params import ROW_PREFIX
-from colse.data_path import get_data_path
-from colse.cat_transform import DeqDataTypes, DeQuantize
-from colse.df_utils import load_dataframe
 from loguru import logger
 from tqdm import tqdm
+
+from colse.cat_transform import DeqDataTypes, DeQuantize
+from colse.data_path import get_data_path
+from colse.datasets.params import ROW_PREFIX
+from colse.df_utils import load_dataframe
 
 current_dir = Path(__file__).parent
 # dataset_dir = current_dir.joinpath("../../data/power")
 dataset_dir = get_data_path() / "power/"
 IS_DEQUANTIZE = True
+
 
 def generate_dataset(**kwargs):
     nrows = kwargs.get("no_of_rows", 500_000)
@@ -22,8 +24,11 @@ def generate_dataset(**kwargs):
     selected_cols = kwargs.get("selected_cols", None)
 
     """ Load dataset"""
-    df_path = dataset_dir / ("original_dequantized_all.csv" if IS_DEQUANTIZE else "original.csv")
-    # df_path = dataset_dir / "original_dequantized_v2.parquet"
+    df_path = dataset_dir / (
+        "original_dequantized_all.csv" if IS_DEQUANTIZE else "original.csv"
+    )
+    # df_path = dataset_dir / ("original_dequantized_v2.parquet" if IS_DEQUANTIZE else "original.csv")
+
     logger.info(f"Loading power dataset from: {df_path}")
     df = load_dataframe(df_path)
     # df = df[df['Voltage'] > 200]
@@ -56,7 +61,6 @@ def generate_dataset(**kwargs):
 
     # df = df.astype(np.float64)
     return new_df
-
 
 
 def get_queries_power(**kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -126,9 +130,13 @@ def get_queries_power(**kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         true_card = true_card
 
     if IS_DEQUANTIZE:
-        query_l_new, query_r_new = query_value_mapper(query_l, query_r) 
-        return query_l_new.astype(np.float64), query_r_new.astype(np.float64), true_card.astype(np.float64)
-    
+        query_l_new, query_r_new = query_value_mapper(query_l, query_r)
+        return (
+            query_l_new.astype(np.float64),
+            query_r_new.astype(np.float64),
+            true_card.astype(np.float64),
+        )
+
     return query_l, query_r, true_card
 
 
@@ -142,11 +150,14 @@ def get_queries_power(**kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 #                 q_l[col] = mapping[q_l[col]][0]
 #                 q_r[col] = mapping[q_r[col]][1]
 
+
 #     return query_l, query_r
 def query_value_mapper(query_l, query_r):
     df = load_dataframe(dataset_dir / "original.csv")
-    
-    quant_dict = DeQuantize.get_dequantizable_columns(df, col_list_to_be_dequantized=list(df.columns))
+
+    quant_dict = DeQuantize.get_dequantizable_columns(
+        df, col_list_to_be_dequantized=list(df.columns)
+    )
     loop = tqdm(enumerate(list(df.columns)), total=len(df.columns))
     for col_id, col_name in loop:
         dequantize = DeQuantize()
@@ -155,10 +166,20 @@ def query_value_mapper(query_l, query_r):
             loop.set_description(f"Mapping values > {col_name:25}")
             if quant_dict[col_name].data_type == DeqDataTypes.DISCRETE:
                 for q_l, q_r in zip(query_l, query_r):
-                    q_l[col_id] = dequantize.get_mapping(q_l[col_id]) if q_l[col_id] != -np.inf else -np.inf
-                    q_r[col_id] = dequantize.get_mapping(q_r[col_id]) if q_r[col_id] != np.inf else np.inf
+                    q_l[col_id] = (
+                        dequantize.get_mapping(q_l[col_id])
+                        if q_l[col_id] != -np.inf
+                        else -np.inf
+                    )
+                    q_r[col_id] = (
+                        dequantize.get_mapping(q_r[col_id])
+                        if q_r[col_id] != np.inf
+                        else np.inf
+                    )
             else:
-                raise ValueError(f"Data type {quant_dict[col_name].data_type} not supported")
+                raise ValueError(
+                    f"Data type {quant_dict[col_name].data_type} not supported"
+                )
 
     return query_l, query_r
 

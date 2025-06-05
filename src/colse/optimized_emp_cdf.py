@@ -146,6 +146,11 @@ class OptimizedEmpiricalCDFModel(CDFBase):
         return self._current_index
 
     def predict(self, value):
+        # logger.info(f"value: {value}")
+        if value >= self._max_unique_value:
+            return 1.0
+        if value <= self._min_unique_value:
+            return 0.0
         if value == np.inf:
             return 1
         elif value == -np.inf:
@@ -155,11 +160,7 @@ class OptimizedEmpiricalCDFModel(CDFBase):
                 self._current_index = self._get_closest_index(value)
                 return self._get_cdf(self._current_index)
             elif self._emp_method == EMPMethod.RELATIVE:
-                # logger.info(f"value: {value}")
-                if value > self._max_unique_value:
-                    return 1.0
-                if value < self._min_unique_value:
-                    return 0.0
+                
 
                 positive_index, negative_index = (
                     self._get_closest_positive_and_negative_index(value)
