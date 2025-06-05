@@ -36,7 +36,7 @@ def parse_args():
         description="Run Divine Copula Dynamic Recursive Test"
     )
     parser.add_argument(
-        "--data_split", type=str, default="test", help="Path to the testing Excel file"
+        "--data_split", type=str, default="train", help="Path to the testing Excel file"
     )
     parser.add_argument(
         "--dataset_name", type=str, default="forest", help="Name of the dataset"
@@ -68,7 +68,7 @@ def main():
     NO_OF_COLUMNS = len(COLUMN_INDEXES)
 
     COPULA_TYPE = CopulaTypes.GUMBEL
-    CDF_STORAGE_CACHE = f"{dataset_type}_{data_split}_data_sample"
+    CDF_STORAGE_CACHE = f"{dataset_type}_cdf_dataframe"
     THETA_STORAGE_CACHE = (
         get_data_path("theta_cache")
         / f"{dataset_type}_{COPULA_TYPE}_{NO_OF_COLUMNS}.pkl"
@@ -76,7 +76,7 @@ def main():
     EXCEL_FILE_PATH = (
         get_excel_path() / f"dvine_v1_{dataset_type.value}_{data_split}_sample.xlsx"
     )
-    CDF_STORAGE_CACHE_OVERRIDE = True
+    CDF_STORAGE_CACHE_OVERRIDE = False
 
     dataset = CustomDataGen(
         no_of_rows=NO_OF_ROWS,
