@@ -121,7 +121,7 @@ class MoreInfo:
 
 
 class CustomDataGen:
-    LOAD_FROM_CACHE = True
+    LOAD_FROM_CACHE = False
 
     def __init__(
         self,
