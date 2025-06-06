@@ -28,6 +28,16 @@ class SplineDequantizer:
         """
         self.M = M
         self.dequantizers = {}  # will hold per-column parameters
+        self.continuous_dequantizers = {}
+
+    def _fit_continuous_column(self, x: pd.Series, col_name: str):
+        """
+        Fit a dequantizer for a continuous column.
+        """
+        self.dequantizers[col_name] = {}
+        z_b = x.dropna().unique()
+        cdf_vals = np.cumsum(z_b)
+        self.continuous_dequantizers[col_name]['spline_cdf'] = PchipInterpolator(z_b, cdf_vals, extrapolate=False)
 
     def _fit_single_column(self, x: pd.Series, col_name: str):
         """
@@ -93,6 +103,9 @@ class SplineDequantizer:
             columns = df.columns.tolist()
         for col in columns:
             self._fit_single_column(df[col], col)
+        
+        for col in [ c for c in df.columns if c not in columns]:
+            self._fit_continuous_column(df[col], col)
 
     def _transform_single_column(self, x: pd.Series, col_name: str) -> np.ndarray:
         """
@@ -131,6 +144,29 @@ class SplineDequantizer:
         for col in columns:
             result[col] = self._transform_single_column(df[col], col)
         return result
+    
+    def get_cdf_values(self, col_name: str, original_value) -> float:
+        """
+        Given one old-data value, return the cumulative frequency at that value.
+        """
+        if col_name in self.continuous_dequantizers:
+            return self.continuous_dequantizers[col_name]['spline_cdf'](original_value)
+        
+        if col_name not in self.dequantizers:
+            raise KeyError(f"Column '{col_name}' was not fit. Call fit(...) first.")
+        
+        if original_value in self.dequantizers[col_name]["cdf_vals"]:
+            return self.dequantizers[col_name]["cdf_vals"][original_value]
+        else:
+            """Interpolate the CDF value"""
+            # cdf_vals = self.dequantizers[col_name]["cdf_vals"]
+            # z_b = self.dequantizers[col_name]["z_b"]
+            # cdf_v1 = np.interp(original_value, z_b, cdf_vals)
+        
+            spline = self.dequantizers[col_name]['spline_cdf']
+            cdf_at_v = float(spline(original_value))
+            # print(f"CDF value for {original_value} is {cdf_v1} | {cdf_at_v}")
+            return cdf_at_v
 
     def get_continuous_interval(self, col_name: str, original_value) -> (float, float):
         """

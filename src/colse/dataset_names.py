@@ -32,6 +32,12 @@ class DatasetNames(str, Enum):
     def __str__(self):
         return self.value
     
+    def get_continuous_columns(self):
+        if self == DatasetNames.DMV_DATA:
+            return ['a']
+        else:
+            raise ValueError(f"Dataset {self} not supported")
+    
     def get_no_of_columns(self):
         if self == DatasetNames.FOREST_DATA:
             return 10
