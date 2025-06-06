@@ -13,11 +13,11 @@ class CDFStorage():
     """Calculate the CDF values for the given queries and store them in a file"""
     def __init__(self, cdf_model_cls, cached_name_string, override=False, *args, **kwargs):
         self.cdf_dataframe = CDFDataFrame(cdf_model_cls, *args, **kwargs)
-        self.cache_name = get_data_path() / f"CDF_cache/{cached_name_string}.pkl"
+        self.cache_name = get_data_path("CDF_cache") / f"{cached_name_string}.pkl"
         self.trained = False
         self.override = override
         self.data_split = kwargs.get("data_split", "NA")
-        self.query_cache_name = get_data_path() / f"CDF_cache/{cached_name_string}_{self.data_split}.npy"
+        self.query_cache_name = get_data_path("CDF_cache") / f"{cached_name_string}_{self.data_split}.npy"
 
 
     def fit(self, df):

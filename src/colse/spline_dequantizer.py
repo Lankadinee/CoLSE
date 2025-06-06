@@ -182,22 +182,10 @@ class SplineDequantizer:
         
         if col_name in self.continuous_dequantizers:
             return self.continuous_dequantizers[col_name]['spline_cdf'](original_value)
-        
-        if col_name not in self.dequantizers:
-            raise KeyError(f"Column '{col_name}' was not fit. Call fit(...) first.")
-        
-        if original_value in self.dequantizers[col_name]["cdf_vals"]:
-            return self.dequantizers[col_name]["cdf_vals"][original_value]
-        else:
-            """Interpolate the CDF value"""
-            # cdf_vals = self.dequantizers[col_name]["cdf_vals"]
-            # z_b = self.dequantizers[col_name]["z_b"]
-            # cdf_v1 = np.interp(original_value, z_b, cdf_vals)
-        
-            spline = self.dequantizers[col_name]['spline_cdf']
-            cdf_at_v = float(spline(original_value))
-            # print(f"CDF value for {original_value} is {cdf_v1} | {cdf_at_v}")
-            return cdf_at_v
+            
+        spline = self.dequantizers[col_name]['spline_cdf']
+        cdf_at_v = float(spline(original_value))
+        return cdf_at_v
 
     def get_continuous_interval(self, col_name: str, original_value) -> (float, float):
         """
