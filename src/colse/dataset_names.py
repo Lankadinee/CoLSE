@@ -32,9 +32,12 @@ class DatasetNames(str, Enum):
     def __str__(self):
         return self.value
     
-    def get_continuous_columns(self):
-        if self == DatasetNames.DMV_DATA:
-            return ['a']
+    def get_non_continuous_columns(self):
+        if self == DatasetNames.FOREST_DATA:
+            return []
+        elif self == DatasetNames.POWER_DATA:
+            # return ['Global_active_power', 'Global_reactive_power', 'Voltage', 'Global_intensity', 'Sub_metering_1', 'Sub_metering_2', 'Sub_metering_3']
+            return ['cont_attr1', 'cont_attr2', 'cont_attr3', 'cont_attr4', 'cont_attr5', 'cont_attr6', 'cont_attr7']
         else:
             raise ValueError(f"Dataset {self} not supported")
     

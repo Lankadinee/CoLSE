@@ -29,15 +29,37 @@ class SplineDequantizer:
         self.M = M
         self.dequantizers = {}  # will hold per-column parameters
         self.continuous_dequantizers = {}
+        self.df_cols = []
+        self.df_max_values = {}
+        self.df_min_values = {}
 
     def _fit_continuous_column(self, x: pd.Series, col_name: str):
         """
         Fit a dequantizer for a continuous column.
         """
-        self.dequantizers[col_name] = {}
-        z_b = x.dropna().unique()
-        cdf_vals = np.cumsum(z_b)
-        self.continuous_dequantizers[col_name]['spline_cdf'] = PchipInterpolator(z_b, cdf_vals, extrapolate=False)
+        # self.dequantizers[col_name] = {}
+        # z_b = np.sort(x.dropna().unique())  # Ensure values are sorted
+        # cdf_vals = np.cumsum(z_b) / np.sum(z_b)
+        # self.continuous_dequantizers[col_name] = {}
+        # self.continuous_dequantizers[col_name]['spline_cdf'] = PchipInterpolator(z_b, cdf_vals, extrapolate=False)
+
+        B = 5000
+        counts, edges = np.histogram(x, bins=B, density=False)
+        N = len(x)
+        p = counts / float(N)            # probability in each bin
+        cdf_bin = np.concatenate(([0.0], np.cumsum(p)))  # length B+1
+        # edges is length B+1, e.g. edges = [x0, x1, …, xB]
+        
+        xs = edges.astype(np.float64)      # [x0, x1, …, xB]
+        ys = cdf_bin                       # [0, cumsum(p)…, 1.0]
+        pchip_cdf = PchipInterpolator(xs, ys, extrapolate=False)
+
+        self.continuous_dequantizers[col_name] = {
+            "spline_cdf": pchip_cdf,
+            "edges": edges,
+            "cdf_bin": cdf_bin,
+        }
+
 
     def _fit_single_column(self, x: pd.Series, col_name: str):
         """
@@ -99,6 +121,9 @@ class SplineDequantizer:
         columns : list[str] or None
             If None, fit on all columns present in df. Otherwise, fit only on df[columns].
         """
+        self.df_cols = df.columns.tolist()
+        self.df_max_values = df.max().to_dict()
+        self.df_min_values = df.min().to_dict()
         if columns is None:
             columns = df.columns.tolist()
         for col in columns:
@@ -149,6 +174,12 @@ class SplineDequantizer:
         """
         Given one old-data value, return the cumulative frequency at that value.
         """
+        if original_value >= self.df_max_values[col_name]:
+            return 1
+        
+        if original_value <= self.df_min_values[col_name]:
+            return 0
+        
         if col_name in self.continuous_dequantizers:
             return self.continuous_dequantizers[col_name]['spline_cdf'](original_value)
         
@@ -205,3 +236,10 @@ class SplineDequantizer:
         low_z = z_b[left_idx]
         high_z = z_b[right_idx]
         return (low_z, high_z)
+    
+    def get_converted_cdf(self, query, column_indexes):
+        """Convert a query into continuous CDF values."""
+        return np.array([
+            self.get_cdf_values(self.df_cols[column_indexes[idx // 2]], query[0][idx])
+            for idx in range(query.shape[1])
+        ])
