@@ -9,6 +9,7 @@ from tqdm import tqdm
 
 from colse.cat_transform import DeqDataTypes, DeQuantize
 from colse.data_path import get_data_path
+from colse.dataset_names import DatasetNames
 from colse.datasets.params import ROW_PREFIX
 from colse.df_utils import load_dataframe
 from colse.spline_dequantizer import SplineDequantizer
@@ -23,13 +24,17 @@ def generate_dataset(**kwargs):
     nrows = kwargs.get("no_of_rows", 500_000)
     no_of_columns = kwargs.get("no_of_cols", None)
     selected_cols = kwargs.get("selected_cols", None)
+    data_file_name = kwargs.get("data_file_name", "dmv.csv")
+    if data_file_name is None:
+        data_file_name = "dmv.csv"
 
     logger.info("Loading dmv dataset...")
 
     # df_path = dataset_dir / (
     #     "dmv_dequantized_v2.parquet" if IS_DEQUANTIZE else "dmv.csv"
     # )
-    df_path = dataset_dir / "dmv_dequantized.parquet"
+    # df_path = dataset_dir / "dmv_dequantized.parquet"
+    df_path = dataset_dir / data_file_name
     df = load_dataframe(df_path)
     logger.info("DMV dataframe loaded.")
 
@@ -88,6 +93,7 @@ def get_queries_dmv(**kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     min_value = kwargs.get("min_value", 1)
     type_test = kwargs.get("type_test", False)
     is_test_set = kwargs.get("is_test_set", False)
+    enable_query_dequantize = kwargs.get("enable_query_dequantize", False)
 
     """Load queries"""
     query_json = dataset_dir / "query_dmv11.json"
@@ -146,7 +152,7 @@ def get_queries_dmv(**kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         query_r = np.array(query_r)
         true_card = true_card
 
-    if IS_DEQUANTIZE:
+    if enable_query_dequantize:
         """convert to np float 64"""
         logger.info("Dequantizing the queries...")
         # query_l = query_l.astype(np.float64)
@@ -161,7 +167,7 @@ def get_queries_dmv(**kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     return query_l, query_r, true_card
 
 
-def query_value_mapper_bk(query_l, query_r):
+def query_value_mapper(query_l, query_r):
     df = load_dataframe(dataset_dir / "dmv.csv")
 
     quant_dict = DeQuantize.get_dequantizable_columns(
@@ -200,7 +206,7 @@ def query_value_mapper_bk(query_l, query_r):
 
 
 # New method
-def query_value_mapper(query_l, query_r):
+def query_value_mapperbk(query_l, query_r):
     df = load_dataframe(dataset_dir / "dmv.csv")
 
     quant_dict = DeQuantize.get_dequantizable_columns(
@@ -210,7 +216,7 @@ def query_value_mapper(query_l, query_r):
     all_cols_len = len(all_cols)
 
     dequantizer = SplineDequantizer(M=10000)
-    dequantizer.fit(df, columns=all_cols)
+    dequantizer.fit(df, columns=DatasetNames.DMV_DATA.get_non_continuous_columns())
 
     loop = tqdm(enumerate(all_cols), total=all_cols_len)
     for col_id, col_name in loop:
@@ -220,7 +226,7 @@ def query_value_mapper(query_l, query_r):
             if quant_dict[col_name].data_type == DeqDataTypes.CATEGORICAL:
                 for q_l, q_r in zip(query_l, query_r):
                     if q_l[col_id] == q_r[col_id]:
-                        q_l[col_id], q_r[col_id] = dequantizer.get_interval(
+                        q_l[col_id], q_r[col_id] = dequantizer.get_continuous_interval(
                             col_name, q_l[col_id]
                         )
                     # else:
@@ -230,12 +236,12 @@ def query_value_mapper(query_l, query_r):
             elif quant_dict[col_name].data_type == DeqDataTypes.DISCRETE:
                 for q_l, q_r in zip(query_l, query_r):
                     q_l[col_id] = (
-                        dequantizer.get_interval(q_l[col_id])[0]
+                        dequantizer.get_continuous_interval(q_l[col_id])[0]
                         if q_l[col_id] not in [-np.inf, "-inf"]
                         else -np.inf
                     )
                     q_r[col_id] = (
-                        dequantizer.get_interval(q_l[col_id])[1]
+                        dequantizer.get_continuous_interval(q_l[col_id])[1]
                         if q_r[col_id] not in [np.inf, "inf"]
                         else np.inf
                     )

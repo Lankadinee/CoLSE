@@ -1,5 +1,7 @@
 from enum import Enum
 
+from colse.data_path import get_data_path
+
 
 class DatasetNames(str, Enum):
     CUSTOM = "custom"
@@ -31,16 +33,46 @@ class DatasetNames(str, Enum):
 
     def __str__(self):
         return self.value
-    
+
+    def get_file_path(self):
+        if self == DatasetNames.POWER_DATA:
+            return get_data_path() / "power/original.csv"
+        elif self == DatasetNames.DMV_DATA:
+            return get_data_path(self.value) / "dmv.csv"
+        else:
+            raise ValueError(f"Dataset {self} not supported")
+
     def get_non_continuous_columns(self):
         if self == DatasetNames.FOREST_DATA:
             return []
         elif self == DatasetNames.POWER_DATA:
-            # return ['Global_active_power', 'Global_reactive_power', 'Voltage', 'Global_intensity', 'Sub_metering_1', 'Sub_metering_2', 'Sub_metering_3']
-            return ['cont_attr1', 'cont_attr2', 'cont_attr3', 'cont_attr4', 'cont_attr5', 'cont_attr6', 'cont_attr7']
+            # return [
+            #     "Global_active_power",
+            #     "Global_reactive_power",
+            #     "Voltage",
+            #     "Global_intensity",
+            #     "Sub_metering_1",
+            #     "Sub_metering_2",
+            #     "Sub_metering_3",
+            # ]
+            # return ['cont_attr1', 'cont_attr2', 'cont_attr3', 'cont_attr4', 'cont_attr5', 'cont_attr6', 'cont_attr7']
+            return []
+        elif self == DatasetNames.DMV_DATA:
+            return [
+                "Record_Type",
+                "Registration_Class", 
+                "State",
+                "County",
+                "Body_Type",
+                "Fuel_Type",
+                "Color",
+                "Scofflaw_Indicator",
+                "Suspension_Indicator",
+                "Revocation_Indicator"
+            ]
         else:
             raise ValueError(f"Dataset {self} not supported")
-    
+
     def get_no_of_columns(self):
         if self == DatasetNames.FOREST_DATA:
             return 10
@@ -50,7 +82,10 @@ class DatasetNames(str, Enum):
             return 13
         elif self == DatasetNames.DMV_DATA:
             return 11
-        elif self == DatasetNames.TPCH_SF2_Z1_LINEITEM or self == DatasetNames.TPCH_SF2_Z0_LINEITEM:
+        elif (
+            self == DatasetNames.TPCH_SF2_Z1_LINEITEM
+            or self == DatasetNames.TPCH_SF2_Z0_LINEITEM
+        ):
             return 15
         elif self == DatasetNames.TPCH_SF2_Z2_LINEITEM:
             return 15
@@ -68,7 +103,13 @@ class DatasetNames(str, Enum):
             return 6
         elif self == DatasetNames.CORRELATED_8:
             return 8
-        elif self == DatasetNames.CORRELATED_10 or self == DatasetNames.CORRELATED_02 or self == DatasetNames.CORRELATED_04 or self == DatasetNames.CORRELATED_06 or self == DatasetNames.CORRELATED_08:
+        elif (
+            self == DatasetNames.CORRELATED_10
+            or self == DatasetNames.CORRELATED_02
+            or self == DatasetNames.CORRELATED_04
+            or self == DatasetNames.CORRELATED_06
+            or self == DatasetNames.CORRELATED_08
+        ):
             return 10
         elif self == DatasetNames.TPCH_LINEITEM_10:
             return 15

@@ -1,3 +1,4 @@
+from typing import Tuple
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_numeric_dtype
@@ -32,6 +33,7 @@ class SplineDequantizer:
         self.df_cols = []
         self.df_max_values = {}
         self.df_min_values = {}
+        self.categorical_columns = []
 
     def _fit_continuous_column(self, x: pd.Series, col_name: str):
         """
@@ -126,12 +128,16 @@ class SplineDequantizer:
         self.df_min_values = df.min().to_dict()
         if columns is None:
             columns = df.columns.tolist()
+        else:
+            self.categorical_columns = columns
+
         for col in columns:
             self._fit_single_column(df[col], col)
+            
         
         for col in [ c for c in df.columns if c not in columns]:
             self._fit_continuous_column(df[col], col)
-
+        
     def _transform_single_column(self, x: pd.Series, col_name: str) -> np.ndarray:
         """
         Dequantize one column into a continuous NumPy array (dtype=float64).
@@ -166,28 +172,49 @@ class SplineDequantizer:
         if columns is None:
             columns = list(self.dequantizers.keys())
         result = pd.DataFrame(index=df.index)
-        for col in columns:
-            result[col] = self._transform_single_column(df[col], col)
+        for col in df.columns:
+            if col in columns:
+                result[col] = self._transform_single_column(df[col], col)
+            else:
+                result[col] = df[col]
         return result
     
     def get_cdf_values(self, col_name: str, original_value) -> float:
         """
         Given one old-data value, return the cumulative frequency at that value.
         """
-        if original_value >= self.df_max_values[col_name]:
+        is_not_cat = col_name not in self.categorical_columns
+        if original_value == -np.inf or (is_not_cat and float(original_value) >= self.df_max_values[col_name]):
             return 1
         
-        if original_value <= self.df_min_values[col_name]:
+        if original_value == np.inf or (is_not_cat and float(original_value) <= self.df_min_values[col_name]):
             return 0
         
         if col_name in self.continuous_dequantizers:
-            return self.continuous_dequantizers[col_name]['spline_cdf'](original_value)
+            return self.continuous_dequantizers[col_name]['spline_cdf'](float(original_value))
             
         spline = self.dequantizers[col_name]['spline_cdf']
         cdf_at_v = float(spline(original_value))
         return cdf_at_v
+    
+    def get_cdf_values_for_cat(self, col_name: str, original_value: str, ub=True) -> float:
+        """
+        Given a query and a column index, return the cumulative frequency at that value.
+        """
+        if original_value in [-np.inf, np.str_('-inf')]:
+            return 0
+        if original_value in [np.inf, np.str_('inf')]:
+            return 1
+        code = self.dequantizers[col_name]['mapping'][original_value]
+        if ub:
+            return self.dequantizers[col_name]['cdf_vals'][code]
+        else:
+            if code == 0:
+                return 0
+            return self.dequantizers[col_name]['cdf_vals'][code - 1]
+        
 
-    def get_continuous_interval(self, col_name: str, original_value) -> (float, float):
+    def get_continuous_interval(self, col_name: str, original_value) -> Tuple[float, float]:
         """
         Given one old-data value, return the continuous interval [low, high)
         on the original value scale corresponding to that value. If unseen integer,
@@ -227,7 +254,20 @@ class SplineDequantizer:
     
     def get_converted_cdf(self, query, column_indexes):
         """Convert a query into continuous CDF values."""
-        return np.array([
-            self.get_cdf_values(self.df_cols[column_indexes[idx // 2]], query[0][idx])
-            for idx in range(query.shape[1])
-        ])
+
+        cdf_values = []
+        for idx, value in enumerate(query[0]):
+            col_name = self.df_cols[column_indexes[idx // 2]]
+
+            if col_name in self.categorical_columns:
+                ub = True if idx % 2 == 1 else False
+                cdf_values.append(self.get_cdf_values_for_cat(col_name, value, ub=ub))
+            else:
+                cdf_values.append(self.get_cdf_values(col_name, value))
+
+        return np.array(cdf_values)
+
+        # return np.array([
+        #     self.get_cdf_values(self.df_cols[column_indexes[idx // 2]], query[0][idx])
+        #     for idx in range(query.shape[1])
+        # ])

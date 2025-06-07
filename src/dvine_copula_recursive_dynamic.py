@@ -73,6 +73,7 @@ def main():
         get_data_path("theta_cache")
         / f"{dataset_type}_{COPULA_TYPE}_{NO_OF_COLUMNS}.pkl"
     )
+    THETA_STORAGE_CACHE = None
     EXCEL_FILE_PATH = (
         get_excel_path() / f"dvine_v1_{dataset_type.value}_{data_split}_sample.xlsx"
     )
@@ -81,6 +82,7 @@ def main():
     dataset = CustomDataGen(
         no_of_rows=NO_OF_ROWS,
         no_of_queries=None,
+        data_file_name="dmv_dequantized.parquet",
         dataset_type=dataset_type,
         data_split=data_split,
         selected_cols=None,
@@ -89,6 +91,7 @@ def main():
         seed=1,
         is_range_queries=True,
         verbose=False,
+        enable_query_dequantize=True
     )
 
     # load error compensation model

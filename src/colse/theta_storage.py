@@ -22,7 +22,7 @@ class ThetaStorage:
                 iterable.append((self.copula_type, data_np[i, :], data_np[j, :]))
                 ij_iterable.append((i, j))
         if self.parellel:
-            logger.info("Parellel Dequantization")
+            logger.info("Parellel Theta Calculation")
             with Pool() as pool:
                 results = pool.map(get_theta, iterable)
         else:

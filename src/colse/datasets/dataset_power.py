@@ -11,7 +11,6 @@ from colse.cat_transform import DeqDataTypes, DeQuantize
 from colse.data_path import get_data_path
 from colse.datasets.params import ROW_PREFIX
 from colse.df_utils import load_dataframe
-from colse.spline_dequantizer import SplineDequantizer
 
 current_dir = Path(__file__).parent
 # dataset_dir = current_dir.joinpath("../../data/power")
@@ -23,12 +22,16 @@ def generate_dataset(**kwargs):
     nrows = kwargs.get("no_of_rows", 500_000)
     no_of_columns = kwargs.get("no_of_cols", None)
     selected_cols = kwargs.get("selected_cols", None)
+    data_file_name = kwargs.get("data_file_name", "original.csv")
+    if data_file_name is None:
+        data_file_name = "original.csv"
 
     """ Load dataset"""
-    df_path = dataset_dir / (
-        "original_dequantized_all.csv" if IS_DEQUANTIZE else "original.csv"
-    )
+    # df_path = dataset_dir / (
+    #     "original_dequantized_all.csv" if IS_DEQUANTIZE else "original.csv"
+    # )
     # df_path = dataset_dir / ("original_dequantized_v2.parquet" if IS_DEQUANTIZE else "original.csv")
+    df_path = dataset_dir / data_file_name
 
     logger.info(f"Loading power dataset from: {df_path}")
     df = load_dataframe(df_path)
@@ -71,7 +74,7 @@ def get_queries_power(**kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     min_value = kwargs.get("min_value", 1)
     type_test = kwargs.get("type_test", False)
     is_test_set = kwargs.get("is_test_set", False)
-    is_dequantize = kwargs.get("is_dequantize", False)
+    enable_query_dequantize = kwargs.get("enable_query_dequantize", False)
 
     """Load queries"""
     query_json = dataset_dir.joinpath("query_power7.json")
@@ -130,7 +133,8 @@ def get_queries_power(**kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         query_r = np.array(query_r)
         true_card = true_card
 
-    if IS_DEQUANTIZE:
+    if enable_query_dequantize:
+        logger.info("Dequantizing queries...")
         query_l_new, query_r_new = query_value_mapper(query_l, query_r)
         return (
             query_l_new.astype(np.float64),
@@ -183,6 +187,7 @@ def query_value_mapper(query_l, query_r):
                 )
 
     return query_l, query_r
+
 
 # def query_value_mapper(query_l, query_r):
 #     df = load_dataframe(dataset_dir / "original.csv")

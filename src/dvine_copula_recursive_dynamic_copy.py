@@ -7,15 +7,15 @@ import numpy as np
 import pandas as pd
 from loguru import logger
 from tqdm import tqdm
+from rich.console import Console
+from rich.table import Table
 
-from colse.cdf_storage import CDFStorage
 from colse.copula_types import CopulaTypes
 from colse.custom_data_generator import CustomDataGen
 from colse.data_path import get_data_path, get_excel_path, get_log_path, get_model_path
 from colse.dataset_names import DatasetNames
+from colse.df_utils import load_dataframe, save_dataframe
 from colse.divine_copula_dynamic_recursive import DivineCopulaDynamicRecursive
-from colse.emphirical_cdf import EMPMethod
-from colse.optimized_emp_cdf import OptimizedEmpiricalCDFModel
 from colse.q_error import qerror
 from colse.spline_dequantizer import SplineDequantizer
 from colse.theta_storage import ThetaStorage
@@ -40,7 +40,7 @@ def parse_args():
         "--data_split", type=str, default="train", help="Path to the testing Excel file"
     )
     parser.add_argument(
-        "--dataset_name", type=str, default="power", help="Name of the dataset"
+        "--dataset_name", type=str, default="dmv", help="Name of the dataset"
     )
     parser.add_argument(
         "--max_unique_values",
@@ -77,11 +77,27 @@ def main():
     EXCEL_FILE_PATH = (
         get_excel_path() / f"dvine_v1_{dataset_type.value}_{data_split}_sample.xlsx"
     )
-    CDF_STORAGE_CACHE_OVERRIDE = False
+    THETA_STORAGE_CACHE = None
+
+    # Dequantize dataset
+    s_dequantize = SplineDequantizer()
+    dataset_path = dataset_type.get_file_path()
+    df = load_dataframe(dataset_path)
+    s_dequantize.fit(df, columns=dataset_type.get_non_continuous_columns())
+    df = s_dequantize.transform(df, columns=dataset_type.get_non_continuous_columns())
+
+    # Save dequantized dataset
+    dequantized_dataset_path = (
+        get_data_path(dataset_type.value) / "original_dequantized_v2.parquet"
+    )
+    logger.info(f"Saving dequantized dataset to {dequantized_dataset_path}")
+    file_name = dequantized_dataset_path.name
+    save_dataframe(df, dequantized_dataset_path)
 
     dataset = CustomDataGen(
         no_of_rows=NO_OF_ROWS,
         no_of_queries=None,
+        data_file_name=file_name,
         dataset_type=dataset_type,
         data_split=data_split,
         selected_cols=None,
@@ -90,6 +106,7 @@ def main():
         seed=1,
         is_range_queries=True,
         verbose=False,
+        enable_query_dequantize=False,
     )
 
     # load error compensation model
@@ -112,6 +129,8 @@ def main():
 
     query_l = dataset.query_l[:, COLUMN_INDEXES]
     query_r = dataset.query_r[:, COLUMN_INDEXES]
+    # print(query_l)
+    # print(query_r)
     actual_ce_ds = dataset.true_card
 
     loop = tqdm(enumerate(zip(query_l, query_r, actual_ce_ds)), total=query_l.shape[0])
@@ -128,8 +147,8 @@ def main():
     X = np.array([get_query(ql, qr) for ql, qr in zip(new_query_l, new_query_r)])
     y = np.array(actual_ce) / no_of_rows
 
-    cdf_df = SplineDequantizer()
-    cdf_df.fit(df, columns=dataset_type.get_non_continuous_columns())
+    # cdf_df = SplineDequantizer()
+    # cdf_df.fit(df, columns=dataset_type.get_non_continuous_columns())
 
     if df.shape[0] > 25_000_000:
         """Take a sample of 20_000_000 rows"""
@@ -161,7 +180,8 @@ def main():
         query = query.reshape(1, -1)
         # start_time_cdf = time.time()
         start_time_predict_cdf = time.time()
-        cdf_list = cdf_df.get_converted_cdf(query, COLUMN_INDEXES)
+        # print(query)
+        cdf_list = s_dequantize.get_converted_cdf(query, COLUMN_INDEXES)
         time_taken_predict_cdf = time.time() - start_time_predict_cdf
         # time_taken_cdf = time.time() - start_time_cdf
         # Reshape the array into pairs
@@ -234,6 +254,11 @@ def main():
     percentiles_values = [50, 90, 95, 99, 100]
     logger.info("-" * 40)
     logger.info(f"Percentiles for q_error")
+    table = Table(title="Dequantizer Test")
+    table.add_column("Percentile", justify="right")
+    table.add_column("copula_only", justify="right")
+    table.add_column("copula+error_comp", justify="right")
+
     for percentile in percentiles_values:
         value = np.percentile(df1["q_error"], percentile)
         value_2 = (
@@ -252,9 +277,13 @@ def main():
             dict_list.append(
                 {"percentile": percentile, "before": value, "after": value_2}
             )
-        logger.info(
-            f"Percentile ({percentile:3d}th): copula_only: {value_1_str:>10}, copula+error_comp: {value_2_str:>10}"
-        )
+        # logger.info(
+        #     f"Percentile ({percentile:3d}th): copula_only: {value_1_str:>10}, copula+error_comp: {value_2_str:>10}"
+        # )
+        table.add_row(f"{percentile}", f"{value_1_str}", f"{value_2_str}")
+
+    console = Console()
+    console.print(table)
 
     dict_list.append({"percentile": "", "value": ""})
     dict_list.append({"percentile": "NO_OF_ROWS", "value": NO_OF_ROWS})
