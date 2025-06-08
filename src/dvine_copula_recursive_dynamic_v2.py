@@ -268,35 +268,30 @@ def main():
     logger.info(f"Percentiles for q_error")
     table = Table(title="Dequantizer Test")
     table.add_column("Percentile", justify="right")
-    table.add_column("copula_only", justify="right")
-    table.add_column("copula+error_comp", justify="right")
+    table.add_column("copula", justify="right")
+    if not IS_ERROR_COMP_TRAIN:
+        table.add_column("copula+error_comp", justify="right")
 
     for percentile in percentiles_values:
         value = np.percentile(df1["q_error"], percentile)
-        value_2 = (
-            np.percentile(df1["q_error_2"], percentile)
-            if not IS_ERROR_COMP_TRAIN
-            else None
-        )
-
         value_1_str = f"{value:.3f}"
-        value_2_str = f"{value_2:.3f}" if value_2 is not None else "N/A"
 
         if IS_ERROR_COMP_TRAIN:
             logger.info(f"Percentile ({percentile:3d}th): {value_1_str}")
             dict_list.append({"percentile": percentile, "value": value_1_str})
+            table.add_row(f"{percentile}", f"{value_1_str}")
         else:
+            value_2 = np.percentile(df1["q_error_2"], percentile)
+            value_2_str = f"{value_2:.3f}"
             dict_list.append(
                 {"percentile": percentile, "before": value, "after": value_2}
             )
-        # logger.info(
-        #     f"Percentile ({percentile:3d}th): copula_only: {value_1_str:>10}, copula+error_comp: {value_2_str:>10}"
-        # )
-        table.add_row(f"{percentile}", f"{value_1_str}", f"{value_2_str}")
+            table.add_row(f"{percentile}", f"{value_1_str}", f"{value_2_str}")
 
     console = Console()
     console.print(table)
 
+    logger.info("Saving results to Excel file")
     dict_list.append({"percentile": "", "value": ""})
     dict_list.append({"percentile": "NO_OF_ROWS", "value": NO_OF_ROWS})
     dict_list.append({"percentile": "QUERY_SIZE", "value": QUERY_SIZE})
@@ -306,11 +301,14 @@ def main():
     with pd.ExcelWriter(EXCEL_FILE_PATH, mode="w") as writer:
         df1.to_excel(writer, sheet_name="Results")
         df2.to_excel(writer, sheet_name="Percentiles")
+    logger.info(f"Saved results to {EXCEL_FILE_PATH}")
 
     logger.info("-" * 40)
     logger.info(f"Query Size: {df1.shape[0]}")
     logger.info(f"Full Zero Count: {full_zero_count}")
     logger.info(f"NaN Count: {nan_count}")
+    logger.info("-" * 40)
+    logger.info("Done!\n\n")
 
 
 if __name__ == "__main__":
