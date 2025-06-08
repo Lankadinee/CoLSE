@@ -6,13 +6,18 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from loguru import logger
-from tqdm import tqdm
 from rich.console import Console
 from rich.table import Table
+from tqdm import tqdm
 
 from colse.copula_types import CopulaTypes
 from colse.custom_data_generator import CustomDataGen
-from colse.data_path import get_data_path, get_excel_path, get_log_path, get_model_path
+from colse.data_path import (
+    DataPathDir,
+    get_data_path,
+    get_log_path,
+    get_model_path,
+)
 from colse.dataset_names import DatasetNames
 from colse.df_utils import load_dataframe, save_dataframe
 from colse.divine_copula_dynamic_recursive import DivineCopulaDynamicRecursive
@@ -69,30 +74,39 @@ def main():
     NO_OF_COLUMNS = len(COLUMN_INDEXES)
 
     COPULA_TYPE = CopulaTypes.GUMBEL
-    CDF_STORAGE_CACHE = f"{dataset_type}_cdf_dataframe"
     THETA_STORAGE_CACHE = (
-        get_data_path("theta_cache")
-        / f"{dataset_type}_{COPULA_TYPE}_{NO_OF_COLUMNS}.pkl"
+        get_data_path(DataPathDir.THETA_CACHE, dataset_type.value)
+        / f"{COPULA_TYPE}_{NO_OF_COLUMNS}.pkl"
     )
     EXCEL_FILE_PATH = (
-        get_excel_path() / f"dvine_v1_{dataset_type.value}_{data_split}_sample.xlsx"
+        get_data_path(DataPathDir.EXCELS)
+        / f"dvine_v1_{dataset_type.value}_{data_split}_sample.xlsx"
     )
-    THETA_STORAGE_CACHE = None
+    SPLINE_DEQUANTIZER_CACHE = (
+        get_data_path(DataPathDir.CDF_CACHE, dataset_type.value)
+        / "spline_dequantizer_cache.pkl"
+    )
 
     # Dequantize dataset
-    s_dequantize = SplineDequantizer()
+    s_dequantize = SplineDequantizer(path=SPLINE_DEQUANTIZER_CACHE)
     dataset_path = dataset_type.get_file_path()
     df = load_dataframe(dataset_path)
-    s_dequantize.fit(df, columns=dataset_type.get_non_continuous_columns())
-    df = s_dequantize.transform(df, columns=dataset_type.get_non_continuous_columns())
+    non_continuous_columns = dataset_type.get_non_continuous_columns()
+    s_dequantize.fit(df, columns=non_continuous_columns)
 
-    # Save dequantized dataset
-    dequantized_dataset_path = (
-        get_data_path(dataset_type.value) / "original_dequantized_v2.parquet"
-    )
-    logger.info(f"Saving dequantized dataset to {dequantized_dataset_path}")
-    file_name = dequantized_dataset_path.name
-    save_dataframe(df, dequantized_dataset_path)
+    if len(non_continuous_columns) > 0:
+        df = s_dequantize.transform(df, columns=non_continuous_columns)
+
+        # Save dequantized dataset
+        dequantized_dataset_path = (
+            get_data_path(dataset_type.value) / "original_dequantized_v2.parquet"
+        )
+        logger.info(f"Saving dequantized dataset to {dequantized_dataset_path}")
+        file_name = dequantized_dataset_path.name
+        save_dataframe(df, dequantized_dataset_path)
+    else:
+        file_name = None
+        logger.info("No non-continuous columns to dequantize")
 
     dataset = CustomDataGen(
         no_of_rows=NO_OF_ROWS,
@@ -129,8 +143,6 @@ def main():
 
     query_l = dataset.query_l[:, COLUMN_INDEXES]
     query_r = dataset.query_r[:, COLUMN_INDEXES]
-    # print(query_l)
-    # print(query_r)
     actual_ce_ds = dataset.true_card
 
     loop = tqdm(enumerate(zip(query_l, query_r, actual_ce_ds)), total=query_l.shape[0])

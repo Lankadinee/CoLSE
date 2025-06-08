@@ -29,7 +29,7 @@ install:
 
 # Train the model
 train dataset_name="forest" epochs="25":
-    uv run src/dvine_copula_recursive_dynamic.py --data_split train --dataset_name {{dataset_name}}
+    uv run src/dvine_copula_recursive_dynamic_v2.py --data_split train --dataset_name {{dataset_name}}
     # uv run src/residual_model_train.py --dataset_name {{dataset_name}} --train_excel_path data/excels/dvine_v1_{{dataset_name}}_train_sample.xlsx --epochs {{epochs}}
 
 # Test the model

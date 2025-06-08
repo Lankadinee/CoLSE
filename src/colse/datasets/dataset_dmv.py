@@ -205,54 +205,6 @@ def query_value_mapper(query_l, query_r):
     return query_l, query_r
 
 
-# New method
-def query_value_mapperbk(query_l, query_r):
-    df = load_dataframe(dataset_dir / "dmv.csv")
-
-    quant_dict = DeQuantize.get_dequantizable_columns(
-        df, col_list_to_be_dequantized=None
-    )
-    all_cols = list(df.columns)
-    all_cols_len = len(all_cols)
-
-    dequantizer = SplineDequantizer(M=10000)
-    dequantizer.fit(df, columns=DatasetNames.DMV_DATA.get_non_continuous_columns())
-
-    loop = tqdm(enumerate(all_cols), total=all_cols_len)
-    for col_id, col_name in loop:
-        loop.set_description(f"Mapping values v2 > {col_name:25}")
-
-        if quant_dict[col_name].is_dequantizable:
-            if quant_dict[col_name].data_type == DeqDataTypes.CATEGORICAL:
-                for q_l, q_r in zip(query_l, query_r):
-                    if q_l[col_id] == q_r[col_id]:
-                        q_l[col_id], q_r[col_id] = dequantizer.get_continuous_interval(
-                            col_name, q_l[col_id]
-                        )
-                    # else:
-                    #     logger.error(f"Query value {q_l[col_id]} and {q_r[col_id]} are not equal")
-                    #     raise ValueError(f"Query value {q_l[col_id]} and {q_r[col_id]} are not equal")
-
-            elif quant_dict[col_name].data_type == DeqDataTypes.DISCRETE:
-                for q_l, q_r in zip(query_l, query_r):
-                    q_l[col_id] = (
-                        dequantizer.get_continuous_interval(q_l[col_id])[0]
-                        if q_l[col_id] not in [-np.inf, "-inf"]
-                        else -np.inf
-                    )
-                    q_r[col_id] = (
-                        dequantizer.get_continuous_interval(q_l[col_id])[1]
-                        if q_r[col_id] not in [np.inf, "inf"]
-                        else np.inf
-                    )
-            else:
-                raise ValueError(
-                    f"Data type {quant_dict[col_name].data_type} not supported"
-                )
-
-    return query_l, query_r
-
-
 def queried_values(query_list):
     """Get the queried values"""
     query_dict = {}

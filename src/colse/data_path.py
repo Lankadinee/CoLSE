@@ -1,11 +1,20 @@
 from pathlib import Path
+from enum import StrEnum, auto
 
 
-def get_data_path(post_fix=None):
+class DataPathDir(StrEnum):
+    MODELS = auto()
+    LOGS = auto()
+    EXCELS = auto()
+    CDF_CACHE = auto()
+    THETA_CACHE = auto()
+    DATAGEN_CACHE = auto()
+
+def get_data_path(*args):
     CWD = Path(__file__).resolve().parent
     data_path = CWD / "../../data"
-    if post_fix is not None:
-        data_path = data_path / post_fix
+    for arg in args:
+        data_path = data_path / arg
     if not data_path.exists():
         # create the data path
         data_path.mkdir(parents=True, exist_ok=True)
@@ -38,3 +47,7 @@ def get_excel_path():
         # create the excel path
         excel_path.mkdir(parents=True, exist_ok=True)
     return excel_path
+
+
+if __name__ == "__main__":
+    print(get_data_path("test123"))

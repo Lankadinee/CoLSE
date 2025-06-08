@@ -189,48 +189,6 @@ def query_value_mapper(query_l, query_r):
     return query_l, query_r
 
 
-# def query_value_mapper(query_l, query_r):
-#     df = load_dataframe(dataset_dir / "original.csv")
-
-#     quant_dict = DeQuantize.get_dequantizable_columns(
-#         df, col_list_to_be_dequantized=list(df.columns)
-#     )
-#     dequantize = SplineDequantizer()
-#     dequantize.fit(df, columns=list(df.columns))
-#     loop = tqdm(enumerate(list(df.columns)), total=len(df.columns))
-#     for col_id, col_name in loop:
-#         # dequantize = DeQuantize()
-#         if quant_dict[col_name].is_dequantizable:
-#             loop.set_description(f"Mapping values > {col_name:25}")
-#             if quant_dict[col_name].data_type == DeqDataTypes.DISCRETE:
-#                 for q_l, q_r in zip(query_l, query_r):
-#                     q_l[col_id] = (
-#                         # dequantize.get_mapping(q_l[col_id])
-#                         dequantize.get_continuous_interval(col_name, q_l[col_id])[0]
-#                         if q_l[col_id] != -np.inf
-#                         else -np.inf
-#                     )
-#                     q_r[col_id] = (
-#                         # dequantize.get_mapping(q_r[col_id])
-#                         dequantize.get_continuous_interval(col_name, q_r[col_id])[1]
-#                         if q_r[col_id] != np.inf
-#                         else np.inf
-#                     )
-#             else:
-#                 raise ValueError(
-#                     f"Data type {quant_dict[col_name].data_type} not supported"
-#                 )
-
-#     return query_l, query_r
-
 
 if __name__ == "__main__":
     query_l, query_r, true_card = get_queries_power(data_split="test")
-    # print(query_l.shape)
-    # print(query_r.shape)
-    # print(true_card.shape)
-    # df = generate_dataset()
-    # print(df.head())
-    # print(_df.shape)
-    # print(dfs.head())
-    # print(dfs.shape)
