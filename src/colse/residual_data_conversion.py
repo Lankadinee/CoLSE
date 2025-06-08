@@ -11,6 +11,7 @@ from tqdm import tqdm
 from colse.custom_data_generator import CustomDataGen
 from colse.data_path import get_data_path
 from colse.dataset_names import DatasetNames
+from colse.spline_dequantizer import SplineDequantizer
 
 
 @dataclass
@@ -39,7 +40,7 @@ class DataConversion:
         self.min_values = None
         self.no_of_rows = None
 
-    def convert(self, excel_file_path, data_file_name=None, use_cache=True):
+    def convert(self, excel_file_path, use_cache=True):
         # Create ReData folder if it doesn't exist
         resdata_folder = get_data_path() / "ResData"
         resdata_folder.mkdir(parents=True, exist_ok=True)
@@ -57,12 +58,13 @@ class DataConversion:
 
         start_time = time.time()
         logger.info(f"Converting data Started..., using {name}")
+        s_dequantize = SplineDequantizer(dataset_type=self.dataset_name)
         if self.max_values is None:
             dataset = CustomDataGen(
                 no_of_rows=None,
                 no_of_queries=None,
                 dataset_type=self.dataset_name,
-                data_file_name=data_file_name,
+                data_file_name=s_dequantize.get_dequantized_dataset_name(),
                 data_split="train",
                 selected_cols=None,
                 scalar_type="min_max",  # 'min_max' or 'standard

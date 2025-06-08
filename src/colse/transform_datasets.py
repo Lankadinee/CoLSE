@@ -4,10 +4,11 @@ from multiprocessing import Pool
 from pathlib import Path
 
 import pandas as pd
-from colse.cat_transform import DeQuantize
-from colse.spline_dequantizer import SplineDequantizer
-from colse.df_utils import load_dataframe, save_dataframe
 from loguru import logger
+
+from colse.cat_transform import DeQuantize
+from colse.df_utils import load_dataframe, save_dataframe
+from colse.spline_dequantizer import SplineDequantizer
 
 
 def dequantize_column(args):
@@ -46,7 +47,7 @@ def convert_df_to_dequantize(df, parellel, col_list_to_be_dequantized=None):
 
 def dataset_conversio_v2(excel_path):
     start_time = time.perf_counter()
-    deq = SplineDequantizer(M=10000)
+    deq = SplineDequantizer(m=10000)
 
     # excel_path = Path("library/data/power/original.csv")
     df = load_dataframe(excel_path)

@@ -12,14 +12,9 @@ from tqdm import tqdm
 
 from colse.copula_types import CopulaTypes
 from colse.custom_data_generator import CustomDataGen
-from colse.data_path import (
-    DataPathDir,
-    get_data_path,
-    get_log_path,
-    get_model_path,
-)
+from colse.data_path import DataPathDir, get_data_path, get_log_path, get_model_path
 from colse.dataset_names import DatasetNames
-from colse.df_utils import load_dataframe, save_dataframe
+from colse.df_utils import load_dataframe
 from colse.divine_copula_dynamic_recursive import DivineCopulaDynamicRecursive
 from colse.q_error import qerror
 from colse.spline_dequantizer import SplineDequantizer
@@ -82,36 +77,15 @@ def main():
         get_data_path(DataPathDir.EXCELS)
         / f"dvine_v1_{dataset_type.value}_{data_split}_sample.xlsx"
     )
-    SPLINE_DEQUANTIZER_CACHE = (
-        get_data_path(DataPathDir.CDF_CACHE, dataset_type.value)
-        / "spline_dequantizer_cache.pkl"
-    )
 
     # Dequantize dataset
-    s_dequantize = SplineDequantizer(path=SPLINE_DEQUANTIZER_CACHE)
-    dataset_path = dataset_type.get_file_path()
-    df = load_dataframe(dataset_path)
-    non_continuous_columns = dataset_type.get_non_continuous_columns()
-    s_dequantize.fit(df, columns=non_continuous_columns)
-
-    if len(non_continuous_columns) > 0:
-        df = s_dequantize.transform(df, columns=non_continuous_columns)
-
-        # Save dequantized dataset
-        dequantized_dataset_path = (
-            get_data_path(dataset_type.value) / "original_dequantized_v2.parquet"
-        )
-        logger.info(f"Saving dequantized dataset to {dequantized_dataset_path}")
-        file_name = dequantized_dataset_path.name
-        save_dataframe(df, dequantized_dataset_path)
-    else:
-        file_name = None
-        logger.info("No non-continuous columns to dequantize")
+    s_dequantize = SplineDequantizer(dataset_type=dataset_type)
+    s_dequantize.fit_transform(load_dataframe(dataset_type.get_file_path()))
 
     dataset = CustomDataGen(
         no_of_rows=NO_OF_ROWS,
         no_of_queries=None,
-        data_file_name=file_name,
+        data_file_name=s_dequantize.get_dequantized_dataset_name(),
         dataset_type=dataset_type,
         data_split=data_split,
         selected_cols=None,
@@ -279,7 +253,6 @@ def main():
         value_1_str = f"{value:.3f}"
 
         if IS_ERROR_COMP_TRAIN:
-            logger.info(f"Percentile ({percentile:3d}th): {value_1_str}")
             dict_list.append({"percentile": percentile, "value": value_1_str})
             table.add_row(f"{percentile}", f"{value_1_str}")
         else:
