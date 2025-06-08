@@ -223,10 +223,11 @@ def main():
             nan_count += 1
             continue
         q_error = qerror(y_bar, y_act, no_of_rows=no_of_rows)
+        mapped_query = s_dequantize.get_mapped_query(query, COLUMN_INDEXES)
 
         if not IS_ERROR_COMP_TRAIN:
             y_bar_2 = error_comp_model.inference(
-                query=query, cdf=cdf_list, y_bar=y_bar
+                query=mapped_query, cdf=cdf_list, y_bar=y_bar
             )[0]
             q_error_2 = qerror(y_bar_2, y_act, no_of_rows=None)
         else:
@@ -237,6 +238,7 @@ def main():
             {
                 "X": ",".join(list(map(str, cdf_list))),
                 "query": ",".join(list(map(str, query[0]))),
+                "mapped_query": ",".join(list(map(str, mapped_query))),
                 "y_bar": y_bar,
                 "y_bar_2": y_bar_2,
                 "y": y_act,

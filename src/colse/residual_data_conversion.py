@@ -39,7 +39,7 @@ class DataConversion:
         self.min_values = None
         self.no_of_rows = None
 
-    def convert(self, excel_file_path, use_cache=True):
+    def convert(self, excel_file_path, data_file_name=None, use_cache=True):
         # Create ReData folder if it doesn't exist
         resdata_folder = get_data_path() / "ResData"
         resdata_folder.mkdir(parents=True, exist_ok=True)
@@ -62,6 +62,7 @@ class DataConversion:
                 no_of_rows=None,
                 no_of_queries=None,
                 dataset_type=self.dataset_name,
+                data_file_name=data_file_name,
                 data_split="train",
                 selected_cols=None,
                 scalar_type="min_max",  # 'min_max' or 'standard
@@ -80,7 +81,7 @@ class DataConversion:
 
         x_cdf = df["X"].to_list()
         x_cdf = [np.array(xc.split(","), dtype=np.float64).tolist() for xc in x_cdf]
-        query = df["query"].to_numpy()
+        query = df["mapped_query"].to_numpy()
         # y_bar = np.log2(df["y_bar"].to_numpy() * self.no_of_rows + 1)
         gt = df["gt"].to_numpy()
         y = np.log2(gt + 1)

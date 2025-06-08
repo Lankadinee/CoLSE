@@ -19,9 +19,12 @@ def generate_dataset(**kwargs):
     nrows = kwargs.get("no_of_rows", 500_000)
     no_of_columns = kwargs.get("no_of_cols", None)
     selected_cols = kwargs.get("selected_cols", None)
+    data_file_name = kwargs.get("data_file_name", "census.csv")
+    if data_file_name is None:
+        data_file_name = "census.csv"
 
     logger.info("Loading census dataset...")
-    df_path = dataset_dir / ("census_dequantized_constrained.csv" if IS_DEQUANTIZE else "census.csv")
+    df_path = dataset_dir / data_file_name
     df = load_dataframe(df_path)
     logger.info("Census dataframe loaded.")
 

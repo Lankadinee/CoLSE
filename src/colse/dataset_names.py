@@ -41,6 +41,8 @@ class DatasetNames(str, Enum):
             return get_data_path(self.value) / "dmv.csv"
         elif self == DatasetNames.FOREST_DATA:
             return get_data_path(self.value) / "forest.csv"
+        elif self == DatasetNames.CENSUS_DATA:
+            return get_data_path(self.value) / "census.csv"
         else:
             raise ValueError(f"Dataset {self} not supported")
 
@@ -61,6 +63,17 @@ class DatasetNames(str, Enum):
                 "Scofflaw_Indicator",
                 "Suspension_Indicator",
                 "Revocation_Indicator"
+            ]
+        elif self == DatasetNames.CENSUS_DATA:
+            return [
+                "workclass",
+                "education",
+                "marital_status",
+                "occupation",
+                "relationship",
+                "race",
+                "sex",
+                "native_country"
             ]
         else:
             raise ValueError(f"Dataset {self} not supported")

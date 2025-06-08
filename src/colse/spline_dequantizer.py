@@ -168,6 +168,7 @@ class SplineDequantizer:
         
         logger.info("Dequantizer fitted successfully.")
         self.time_taken_for_fit = time.perf_counter() - start_time
+        logger.info(f"Time taken for fit: {self.time_taken_for_fit:.2f} seconds")
 
         if self.path and not self.already_loaded:
             self.save_to_pickle(self.path)
@@ -288,3 +289,20 @@ class SplineDequantizer:
                 cdf_values.append(self.get_cdf_values(col_name, value))
 
         return np.array(cdf_values)
+    
+    def get_mapped_query(self, query, column_indexes):
+        """Convert categorical columns in a query into their mapped values"""
+        mapped_query = []
+        categorical_columns = self.dequantizers[DequantizerType.CATEGORICAL].keys()
+        for idx, value in enumerate(query[0]):
+            col_name = self.metadata.df_cols[column_indexes[idx // 2]]
+            if col_name in categorical_columns:
+                if value == np.str_("-inf"):
+                    mapped_query.append(min(self.dequantizers[DequantizerType.CATEGORICAL][col_name]["mapping"].values()))
+                elif value == np.str_("inf"):
+                    mapped_query.append(max(self.dequantizers[DequantizerType.CATEGORICAL][col_name]["mapping"].values()))
+                else:
+                    mapped_query.append(self.dequantizers[DequantizerType.CATEGORICAL][col_name]["mapping"][value])
+            else:
+                mapped_query.append(np.float64(value))
+        return np.array(mapped_query)
