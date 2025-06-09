@@ -34,20 +34,35 @@ class DatasetNames(str, Enum):
     def __str__(self):
         return self.value
 
-    def get_file_path(self, filename=None):
+    def is_tpch_type(self):
+        return (
+            self == DatasetNames.TPCH_SF2_Z0_LINEITEM
+            or self == DatasetNames.TPCH_SF2_Z1_LINEITEM
+            or self == DatasetNames.TPCH_SF2_Z2_LINEITEM
+            or self == DatasetNames.TPCH_SF2_Z3_LINEITEM
+            or self == DatasetNames.TPCH_SF2_Z4_LINEITEM
+            or self == DatasetNames.TPCH_LINEITEM_10
+            or self == DatasetNames.TPCH_LINEITEM_20
+        )
+
+    def get_file_path(self, filename=None, exist_check=True):
         if self == DatasetNames.POWER_DATA:
-            dp = get_data_path(self.value) / (filename if filename else "original.csv" )
+            dp = get_data_path(self.value) / (filename if filename else "original.csv")
         elif self == DatasetNames.DMV_DATA:
-            dp = get_data_path(self.value) / (filename if filename else "dmv.csv")
+            dp = get_data_path(self.value) / (filename if filename else "dmv.parquet")
         elif self == DatasetNames.FOREST_DATA:
             dp = get_data_path(self.value) / (filename if filename else "forest.csv")
         elif self == DatasetNames.CENSUS_DATA:
             dp = get_data_path(self.value) / (filename if filename else "census.csv")
+        elif self.is_tpch_type():
+            dp = get_data_path(self.value) / (
+                filename if filename else "original_preprocessed.parquet"
+            )
         else:
             raise ValueError(f"Dataset {self} not supported")
-        if not dp.exists():
+        if not dp.exists() and exist_check:
             raise FileNotFoundError(f"File {dp} not found")
-        
+
         return dp
 
     def get_non_continuous_columns(self):
@@ -58,7 +73,7 @@ class DatasetNames(str, Enum):
         elif self == DatasetNames.DMV_DATA:
             return [
                 "Record_Type",
-                "Registration_Class", 
+                "Registration_Class",
                 "State",
                 "County",
                 "Body_Type",
@@ -66,7 +81,7 @@ class DatasetNames(str, Enum):
                 "Color",
                 "Scofflaw_Indicator",
                 "Suspension_Indicator",
-                "Revocation_Indicator"
+                "Revocation_Indicator",
             ]
         elif self == DatasetNames.CENSUS_DATA:
             return [
@@ -77,7 +92,14 @@ class DatasetNames(str, Enum):
                 "relationship",
                 "race",
                 "sex",
-                "native_country"
+                "native_country",
+            ]
+        elif self.is_tpch_type():
+            return [
+                "l_returnflag",
+                "l_linestatus",
+                "l_shipinstruct",
+                "l_shipmode",
             ]
         else:
             raise ValueError(f"Dataset {self} not supported")

@@ -7,21 +7,38 @@ from typing import List, Optional
 
 import numpy as np
 import pandas as pd
+from loguru import logger
+from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
+from tqdm import tqdm
+
+from colse.data_path import get_data_path
+from colse.dataset_names import DatasetNames
 from colse.datasets.dataset_census import generate_dataset as generate_dataset_census
 from colse.datasets.dataset_census import get_queries_census
+from colse.datasets.dataset_correlated_02 import (
+    generate_dataset_correlated_02,
+    get_queries_correlated_02,
+)
+from colse.datasets.dataset_correlated_04 import (
+    generate_dataset_correlated_04,
+    get_queries_correlated_04,
+)
+from colse.datasets.dataset_correlated_06 import (
+    generate_dataset_correlated_06,
+    get_queries_correlated_06,
+)
+from colse.datasets.dataset_correlated_08 import (
+    generate_dataset_correlated_08,
+    get_queries_correlated_08,
+)
 from colse.datasets.dataset_dmv import generate_dataset as generate_dataset_dmv
 from colse.datasets.dataset_dmv import get_queries_dmv
 from colse.datasets.dataset_forest import generate_dataset as generate_dataset_forest
 from colse.datasets.dataset_forest import get_queries_forest, get_sample_queries
 from colse.datasets.dataset_gas import generate_dataset as generate_dataset_gas
 from colse.datasets.dataset_gas import get_queries
-from colse.dataset_names import DatasetNames
 from colse.datasets.dataset_power import generate_dataset as generate_dataset_power
 from colse.datasets.dataset_power import get_queries_power
-from colse.datasets.dataset_synthetic_correlated_10 import (
-    generate_dataset_correlated_10,
-    get_queries_correlated_10,
-)
 from colse.datasets.dataset_synthetic_correlated_2 import (
     generate_dataset_correlated_2,
     get_queries_correlated_2,
@@ -42,49 +59,25 @@ from colse.datasets.dataset_synthetic_correlated_8 import (
     generate_dataset_correlated_8,
     get_queries_correlated_8,
 )
-from colse.datasets.dataset_tpch_lineitem_10 import (
+from colse.datasets.dataset_synthetic_correlated_10 import (
+    generate_dataset_correlated_10,
+    get_queries_correlated_10,
+)
+from colse.datasets.dataset_tpch_lineitem import (
     generate_dataset_tpch_lineitem_10,
-    get_queries_tpch_lineitem_10,
-)
-from colse.datasets.dataset_tpch_lineitem_20 import (
     generate_dataset_tpch_lineitem_20,
-    get_queries_tpch_lineitem_20,
-)
-from colse.datasets.dataset_tpch_sf2_z0_lineitem import (
     generate_dataset_tpch_sf2_z0_lineitem,
-    get_queries_tpch_sf2_z0_lineitem,
-)
-from colse.datasets.dataset_tpch_sf2_z1_lineitem import (
     generate_dataset_tpch_sf2_z1_lineitem,
-    get_queries_tpch_sf2_z1_lineitem,
-)
-from colse.datasets.dataset_tpch_sf2_z2_lineitem import (
     generate_dataset_tpch_sf2_z2_lineitem,
-    get_queries_tpch_sf2_z2_lineitem,
-)
-from colse.datasets.dataset_tpch_sf2_z3_lineitem import (
     generate_dataset_tpch_sf2_z3_lineitem,
-    get_queries_tpch_sf2_z3_lineitem,
-)
-from colse.datasets.dataset_tpch_sf2_z4_lineitem import (
     generate_dataset_tpch_sf2_z4_lineitem,
+    get_queries_tpch_lineitem_10,
+    get_queries_tpch_lineitem_20,
+    get_queries_tpch_sf2_z0_lineitem,
+    get_queries_tpch_sf2_z1_lineitem,
+    get_queries_tpch_sf2_z2_lineitem,
+    get_queries_tpch_sf2_z3_lineitem,
     get_queries_tpch_sf2_z4_lineitem,
-)
-from colse.datasets.dataset_correlated_02 import (
-    generate_dataset_correlated_02,
-    get_queries_correlated_02,
-)
-from colse.datasets.dataset_correlated_04 import (
-    generate_dataset_correlated_04,
-    get_queries_correlated_04,
-)
-from colse.datasets.dataset_correlated_06 import (
-    generate_dataset_correlated_06,
-    get_queries_correlated_06,
-)
-from colse.datasets.dataset_correlated_08 import (
-    generate_dataset_correlated_08,
-    get_queries_correlated_08,
 )
 from colse.datasets.dataset_v1 import generate_dataset as generate_dataset_v1
 from colse.datasets.dataset_v2 import generate_dataset as generate_dataset_v2
@@ -94,11 +87,6 @@ from colse.datasets.query_filter import filter_queries
 from colse.datasets.variable_dataset import (
     generate_dataset as generate_dataset_variable,
 )
-from colse.data_path import get_data_path
-from loguru import logger
-from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
-from tqdm import tqdm
-
 from colse.transform_datasets import convert_df_to_dequantize
 
 DS_TYPE_MAPPER = {
@@ -413,8 +401,8 @@ class CustomDataGen:
                 no_of_queries=self.no_of_queries,
                 data_split=self.data_split,
                 min_value=self.no_of_rows / 1000,
-                enable_query_dequantize=self.enable_query_dequantize, # Mapping queried values to dequantized values
-                query_file_name=self.query_file_name
+                enable_query_dequantize=self.enable_query_dequantize,  # Mapping queried values to dequantized values
+                query_file_name=self.query_file_name,
             )
             if self.selected_cols is not None:
                 no_of_cols = self.query_l.shape[1]

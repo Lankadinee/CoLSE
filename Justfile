@@ -64,4 +64,5 @@ retest dataset_name="forest" update-type="ind_0.2": install
 all: install download train test
 
 clean:
-    pyclean .
+    rm -rf data/
+    rm -rf .venv/

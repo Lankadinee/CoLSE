@@ -14,6 +14,7 @@ from colse.copula_types import CopulaTypes
 from colse.custom_data_generator import CustomDataGen
 from colse.data_path import DataPathDir, get_data_path, get_log_path, get_model_path
 from colse.dataset_names import DatasetNames
+from colse.datasets.preprocess import preprocess_dataset
 from colse.df_utils import load_dataframe
 from colse.divine_copula_dynamic_recursive import DivineCopulaDynamicRecursive
 from colse.q_error import qerror
@@ -70,10 +71,15 @@ def main():
     parsed_args = parse_args()
     data_split = parsed_args.data_split
     dataset_type = DatasetNames(parsed_args.dataset_name)
+    logger.info(f"Dataset Type: {parsed_args.dataset_name} -> {dataset_type}")
+
     NO_OF_ROWS = None
     QUERY_SIZE = None
     COLUMN_INDEXES = [i for i in range(dataset_type.get_no_of_columns())]
     NO_OF_COLUMNS = len(COLUMN_INDEXES)
+
+    # pre process dataset
+    preprocess_dataset(dataset_type)
     
     error_comp_model = None
     error_comp_model_path = None
@@ -85,7 +91,6 @@ def main():
             logger.error(f"Error compensation model {error_comp_model_path} does not exist")
             exit(1)
         
-
     logger.info(f"Error compensation model loaded: {error_comp_model is not None}")
 
     excel_file_path = get_data_path(DataPathDir.EXCELS) / f"{parsed_args.output_excel_name}"
