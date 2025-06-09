@@ -34,17 +34,21 @@ class DatasetNames(str, Enum):
     def __str__(self):
         return self.value
 
-    def get_file_path(self):
+    def get_file_path(self, filename=None):
         if self == DatasetNames.POWER_DATA:
-            return get_data_path(self.value) / "original.csv"
+            dp = get_data_path(self.value) / (filename if filename else "original.csv" )
         elif self == DatasetNames.DMV_DATA:
-            return get_data_path(self.value) / "dmv.csv"
+            dp = get_data_path(self.value) / (filename if filename else "dmv.csv")
         elif self == DatasetNames.FOREST_DATA:
-            return get_data_path(self.value) / "forest.csv"
+            dp = get_data_path(self.value) / (filename if filename else "forest.csv")
         elif self == DatasetNames.CENSUS_DATA:
-            return get_data_path(self.value) / "census.csv"
+            dp = get_data_path(self.value) / (filename if filename else "census.csv")
         else:
             raise ValueError(f"Dataset {self} not supported")
+        if not dp.exists():
+            raise FileNotFoundError(f"File {dp} not found")
+        
+        return dp
 
     def get_non_continuous_columns(self):
         if self == DatasetNames.FOREST_DATA:

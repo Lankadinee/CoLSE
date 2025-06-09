@@ -43,7 +43,10 @@ class SplineDequantizer:
     """
 
     def __init__(
-        self, dataset_type: DatasetNames, m: int = 10000, enable_cache: bool = True
+        self, dataset_type: DatasetNames, 
+        m: int = 10000, 
+        cache_name: str = None,
+        output_file_name: str = None
     ):
         """
         Parameters
@@ -59,25 +62,31 @@ class SplineDequantizer:
         }  # will hold per-column parameters
         self._metadata = Metadata()
         self._dataset_type = dataset_type
-        self._enable_cache = enable_cache
-        path = get_data_path(DataPathDir.CDF_CACHE, dataset_type.value) / "sd_cache.pkl"
+        if cache_name:
+            path = get_data_path(DataPathDir.CDF_CACHE, dataset_type.value) / f"{cache_name}"
+        else:
+            path = None
 
         self._already_loaded = False
-        if self._enable_cache and path.exists():
-            self.load_from_pickle(path)
-            self._already_loaded = True
-            logger.info(f"Dequantizer loaded from {path}")
+        if path: 
+            if path.exists():
+                self.load_from_pickle(path)
+                self._already_loaded = True
+                logger.info(f"Dequantizer loaded from {path}")
+            else:
+                logger.warning(f"Dequantizer cache not found at {path}")
 
-        self._path = path
+        self._cache_path = path
 
         self._time_taken_for_fit = 0
+        self._out_file_name = output_file_name if output_file_name else "dequantized_v2.parquet"
         self._dequantized_dataset_path = (
-            get_data_path(dataset_type.value) / "dequantized_v2.parquet"
+            get_data_path(dataset_type.value) / self._out_file_name
         )
 
     def get_dequantized_dataset_name(self):
         if self._dequantized_dataset_path.exists():
-            return "dequantized_v2.parquet"
+            return self._out_file_name
         else:
             return None
 
@@ -188,8 +197,8 @@ class SplineDequantizer:
         self._time_taken_for_fit = time.perf_counter() - start_time
         logger.info(f"Time taken for fit: {self._time_taken_for_fit:.2f} seconds")
 
-        if self._path and not self._already_loaded:
-            self.save_to_pickle(self._path)
+        if self._cache_path and not self._already_loaded:
+            self.save_to_pickle(self._cache_path)
         return True
 
     def save_to_pickle(self, path: str):

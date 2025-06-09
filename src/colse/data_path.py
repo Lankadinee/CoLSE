@@ -9,12 +9,13 @@ class DataPathDir(StrEnum):
     CDF_CACHE = auto()
     THETA_CACHE = auto()
     DATAGEN_CACHE = auto()
+    DATA_UPDATES = auto()
 
 def get_data_path(*args):
     CWD = Path(__file__).resolve().parent
     data_path = CWD / "../../data"
     for arg in args:
-        data_path = data_path / arg
+        data_path = data_path / arg if arg else data_path
     if not data_path.exists():
         # create the data path
         data_path.mkdir(parents=True, exist_ok=True)

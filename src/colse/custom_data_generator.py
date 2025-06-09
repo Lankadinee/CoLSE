@@ -187,6 +187,7 @@ class CustomDataGen:
         no_of_queries: Optional[int] = 1000,
         dataset_type: DatasetNames = DatasetNames.PAYROLL_DATA,
         data_file_name: str | None = None,
+        query_file_name: str | None = None,
         data_split="test",
         selected_cols: Optional[list] = None,
         scalar_type: str = "min_max",
@@ -228,6 +229,7 @@ class CustomDataGen:
         self.more_info = MoreInfo()
         self.splines = dict()
         self.data_file_name = data_file_name
+        self.query_file_name = query_file_name
         (
             logger.info(
                 f"Checking saved data generator {self.datagen_name.name} exists {self.datagen_name.exists()}"
@@ -412,6 +414,7 @@ class CustomDataGen:
                 data_split=self.data_split,
                 min_value=self.no_of_rows / 1000,
                 enable_query_dequantize=self.enable_query_dequantize, # Mapping queried values to dequantized values
+                query_file_name=self.query_file_name
             )
             if self.selected_cols is not None:
                 no_of_cols = self.query_l.shape[1]

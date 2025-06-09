@@ -48,44 +48,87 @@ def parse_args():
         default="auto",
         help="Size of the unique values",
     )
+    parser.add_argument(
+        "--model_name", type=str, default=None, help="Name of the model"
+    )
+    parser.add_argument(
+        "--update_type", type=str, default=None, help="Type of update to the dataset"
+    )
+    parser.add_argument(
+        "--output_excel_name", type=str, default=None, help="Name of the output excel file"
+    )
+    parser.add_argument(
+        "--theta_cache_path", type=str, default=None, help="Path to the theta cache file"
+    )
+    parser.add_argument(
+        "--cdf_cache_name", type=str, default=None, help="Name of the cdf cache file"
+    )
     return parser.parse_args()
 
 
 def main():
     parsed_args = parse_args()
-    IS_ERROR_COMP_TRAIN = parsed_args.data_split == "train"
-    logger.info(f"IS_ERROR_COMP_TRAIN: {IS_ERROR_COMP_TRAIN}")
-
-    max_unique_values = (
-        int(parsed_args.max_unique_values)
-        if parsed_args.max_unique_values != "auto"
-        else "auto"
-    )
     data_split = parsed_args.data_split
     dataset_type = DatasetNames(parsed_args.dataset_name)
     NO_OF_ROWS = None
     QUERY_SIZE = None
     COLUMN_INDEXES = [i for i in range(dataset_type.get_no_of_columns())]
     NO_OF_COLUMNS = len(COLUMN_INDEXES)
+    
+    error_comp_model = None
+    error_comp_model_path = None
+    if parsed_args.model_name:
+        logger.info(f"Loading error compensation model {parsed_args.model_name}")
+        # load error compensation model
+        error_comp_model_path = get_model_path(dataset_type.value) / f"{parsed_args.model_name}"
+        if not error_comp_model_path.exists():
+            logger.error(f"Error compensation model {error_comp_model_path} does not exist")
+            exit(1)
+        
 
+    logger.info(f"Error compensation model loaded: {error_comp_model is not None}")
+
+    excel_file_path = get_data_path(DataPathDir.EXCELS) / f"{parsed_args.output_excel_name}"
     COPULA_TYPE = CopulaTypes.GUMBEL
-    THETA_STORAGE_CACHE = (
+    theta_cache_path = (
         get_data_path(DataPathDir.THETA_CACHE, dataset_type.value)
         / f"{COPULA_TYPE}_{NO_OF_COLUMNS}.pkl"
     )
-    EXCEL_FILE_PATH = (
-        get_data_path(DataPathDir.EXCELS)
-        / f"dvine_v1_{dataset_type.value}_{data_split}_sample.xlsx"
+    
+    max_unique_values = (
+        int(parsed_args.max_unique_values)
+        if parsed_args.max_unique_values != "auto"
+        else "auto"
     )
 
+
     # Dequantize dataset
-    s_dequantize = SplineDequantizer(dataset_type=dataset_type)
-    s_dequantize.fit_transform(load_dataframe(dataset_type.get_file_path()))
+    if parsed_args.update_type:
+        original_file_name = f"{DataPathDir.DATA_UPDATES}/original_{parsed_args.update_type}.csv"
+        output_file_name = f"{DataPathDir.DATA_UPDATES}/dequantized_v2_{parsed_args.update_type}.parquet"
+        query_file_name = f"{DataPathDir.DATA_UPDATES}/query_{parsed_args.update_type}.json"
+    else:
+        original_file_name = None
+        output_file_name = "dequantized_v2.parquet"
+        query_file_name = None
+
+    s_dequantize = SplineDequantizer(
+        dataset_type=dataset_type,
+        cache_name=parsed_args.cdf_cache_name,
+        output_file_name=output_file_name
+    )
+    s_dequantize.fit_transform(load_dataframe(dataset_type.get_file_path(original_file_name)))
+    dequantized_file_name = s_dequantize.get_dequantized_dataset_name()
+    if dequantized_file_name:
+        datagen_load_file_name = dequantized_file_name
+    else:
+        datagen_load_file_name = dataset_type.get_file_path(original_file_name)
 
     dataset = CustomDataGen(
         no_of_rows=NO_OF_ROWS,
         no_of_queries=None,
-        data_file_name=s_dequantize.get_dequantized_dataset_name(),
+        data_file_name=datagen_load_file_name,
+        query_file_name=query_file_name,
         dataset_type=dataset_type,
         data_split=data_split,
         selected_cols=None,
@@ -97,13 +140,8 @@ def main():
         enable_query_dequantize=False,
     )
 
-    # load error compensation model
-    error_comp_model_path = get_model_path(dataset_type.value) / "error_comp_model.pt"
-    error_comp_model = (
-        ErrorCompensationNetwork(error_comp_model_path, dataset)
-        if not IS_ERROR_COMP_TRAIN
-        else None
-    )
+    if error_comp_model_path:
+        error_comp_model = ErrorCompensationNetwork(error_comp_model_path, dataset)
 
     df = dataset.df
     no_of_rows = df.shape[0]
@@ -119,11 +157,10 @@ def main():
     query_r = dataset.query_r[:, COLUMN_INDEXES]
     actual_ce_ds = dataset.true_card
 
-    loop = tqdm(enumerate(zip(query_l, query_r, actual_ce_ds)), total=query_l.shape[0])
-    query_size = 0
-    new_query_l = query_l
-    new_query_r = query_r
-    actual_ce = actual_ce_ds
+    query_size = 100 # TODO: Remove this
+    new_query_l = query_l[:query_size]
+    new_query_r = query_r[:query_size]
+    actual_ce = actual_ce_ds[:query_size]
 
     logger.info(f"Query Size: {len(new_query_l)}")
 
@@ -149,7 +186,7 @@ def main():
         data_np = df.to_numpy().transpose()
 
     theta_dict = ThetaStorage(COPULA_TYPE, NO_OF_COLUMNS).get_theta(
-        data_np, cache_name=THETA_STORAGE_CACHE
+        data_np, cache_name=theta_cache_path
     )
 
     model = DivineCopulaDynamicRecursive(theta_dict=theta_dict)
@@ -199,7 +236,7 @@ def main():
         q_error = qerror(y_bar, y_act, no_of_rows=no_of_rows)
         mapped_query = s_dequantize.get_mapped_query(query, COLUMN_INDEXES)
 
-        if not IS_ERROR_COMP_TRAIN:
+        if error_comp_model:
             y_bar_2 = error_comp_model.inference(
                 query=mapped_query, cdf=cdf_list, y_bar=y_bar
             )[0]
@@ -245,23 +282,24 @@ def main():
     table = Table(title="Dequantizer Test")
     table.add_column("Percentile", justify="right")
     table.add_column("copula", justify="right")
-    if not IS_ERROR_COMP_TRAIN:
+    if error_comp_model:
         table.add_column("copula+error_comp", justify="right")
 
     for percentile in percentiles_values:
         value = np.percentile(df1["q_error"], percentile)
         value_1_str = f"{value:.3f}"
 
-        if IS_ERROR_COMP_TRAIN:
-            dict_list.append({"percentile": percentile, "value": value_1_str})
-            table.add_row(f"{percentile}", f"{value_1_str}")
-        else:
+        if error_comp_model:
             value_2 = np.percentile(df1["q_error_2"], percentile)
             value_2_str = f"{value_2:.3f}"
             dict_list.append(
                 {"percentile": percentile, "before": value, "after": value_2}
             )
             table.add_row(f"{percentile}", f"{value_1_str}", f"{value_2_str}")
+        else:
+
+            dict_list.append({"percentile": percentile, "value": value_1_str})
+            table.add_row(f"{percentile}", f"{value_1_str}")
 
     console = Console()
     console.print(table)
@@ -273,10 +311,10 @@ def main():
 
     df2 = pd.DataFrame(dict_list)
 
-    with pd.ExcelWriter(EXCEL_FILE_PATH, mode="w") as writer:
+    with pd.ExcelWriter(excel_file_path, mode="w") as writer:
         df1.to_excel(writer, sheet_name="Results")
         df2.to_excel(writer, sheet_name="Percentiles")
-    logger.info(f"Saved results to {EXCEL_FILE_PATH}")
+    logger.info(f"Saved results to {excel_file_path}")
 
     logger.info("-" * 40)
     logger.info(f"Query Size: {df1.shape[0]}")

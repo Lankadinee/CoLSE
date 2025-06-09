@@ -64,9 +64,17 @@ def get_queries_forest(**kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     min_value = kwargs.get("min_value", 1)
     type_test = kwargs.get("type_test", False)
     is_test_set = kwargs.get("is_test_set", False)
+    query_file_name = kwargs.get("query_file_name", None)
 
     """Load queries"""
-    query_json = dataset_dir / "query.json"
+    if query_file_name is None:
+        query_json = dataset_dir / "query.json"
+    else:
+        query_json = dataset_dir / query_file_name
+        
+    if not query_json.exists():
+        raise FileNotFoundError(f"File {query_json.absolute()} not found")
+    
     logger.info(f"Loading queries from {query_json.absolute()}")
     queries = json.load(query_json.open())
     # training_queries = queries['train']
