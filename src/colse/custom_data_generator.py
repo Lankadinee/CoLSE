@@ -34,35 +34,11 @@ from colse.datasets.dataset_correlated_08 import (
 from colse.datasets.dataset_dmv import generate_dataset as generate_dataset_dmv
 from colse.datasets.dataset_dmv import get_queries_dmv
 from colse.datasets.dataset_forest import generate_dataset as generate_dataset_forest
-from colse.datasets.dataset_forest import get_queries_forest, get_sample_queries
+from colse.datasets.dataset_forest import get_queries_forest
 from colse.datasets.dataset_gas import generate_dataset as generate_dataset_gas
 from colse.datasets.dataset_gas import get_queries
 from colse.datasets.dataset_power import generate_dataset as generate_dataset_power
 from colse.datasets.dataset_power import get_queries_power
-from colse.datasets.dataset_synthetic_correlated_2 import (
-    generate_dataset_correlated_2,
-    get_queries_correlated_2,
-)
-from colse.datasets.dataset_synthetic_correlated_3 import (
-    generate_dataset_correlated_3,
-    get_queries_correlated_3,
-)
-from colse.datasets.dataset_synthetic_correlated_4 import (
-    generate_dataset_correlated_4,
-    get_queries_correlated_4,
-)
-from colse.datasets.dataset_synthetic_correlated_6 import (
-    generate_dataset_correlated_6,
-    get_queries_correlated_6,
-)
-from colse.datasets.dataset_synthetic_correlated_8 import (
-    generate_dataset_correlated_8,
-    get_queries_correlated_8,
-)
-from colse.datasets.dataset_synthetic_correlated_10 import (
-    generate_dataset_correlated_10,
-    get_queries_correlated_10,
-)
 from colse.datasets.dataset_tpch_lineitem import (
     generate_dataset_tpch_lineitem_10,
     generate_dataset_tpch_lineitem_20,
@@ -99,12 +75,6 @@ DS_TYPE_MAPPER = {
     DatasetNames.VARIABLE: generate_dataset_variable,
     DatasetNames.CENSUS_DATA: generate_dataset_census,
     DatasetNames.DMV_DATA: generate_dataset_dmv,
-    DatasetNames.CORRELATED_2: generate_dataset_correlated_2,
-    DatasetNames.CORRELATED_3: generate_dataset_correlated_3,
-    DatasetNames.CORRELATED_4: generate_dataset_correlated_4,
-    DatasetNames.CORRELATED_6: generate_dataset_correlated_6,
-    DatasetNames.CORRELATED_8: generate_dataset_correlated_8,
-    DatasetNames.CORRELATED_10: generate_dataset_correlated_10,
     DatasetNames.TPCH_SF2_Z0_LINEITEM: generate_dataset_tpch_sf2_z0_lineitem,
     DatasetNames.TPCH_SF2_Z1_LINEITEM: generate_dataset_tpch_sf2_z1_lineitem,
     DatasetNames.TPCH_SF2_Z2_LINEITEM: generate_dataset_tpch_sf2_z2_lineitem,
@@ -124,12 +94,6 @@ QUERY_GENERATE_MAPPER = {
     DatasetNames.POWER_DATA: get_queries_power,
     DatasetNames.CENSUS_DATA: get_queries_census,
     DatasetNames.DMV_DATA: get_queries_dmv,
-    DatasetNames.CORRELATED_2: get_queries_correlated_2,
-    DatasetNames.CORRELATED_3: get_queries_correlated_3,
-    DatasetNames.CORRELATED_4: get_queries_correlated_4,
-    DatasetNames.CORRELATED_6: get_queries_correlated_6,
-    DatasetNames.CORRELATED_8: get_queries_correlated_8,
-    DatasetNames.CORRELATED_10: get_queries_correlated_10,
     DatasetNames.TPCH_SF2_Z0_LINEITEM: get_queries_tpch_sf2_z0_lineitem,
     DatasetNames.TPCH_SF2_Z1_LINEITEM: get_queries_tpch_sf2_z1_lineitem,
     DatasetNames.TPCH_SF2_Z2_LINEITEM: get_queries_tpch_sf2_z2_lineitem,
@@ -142,11 +106,6 @@ QUERY_GENERATE_MAPPER = {
     DatasetNames.CORRELATED_06: get_queries_correlated_06,
     DatasetNames.CORRELATED_08: get_queries_correlated_08,
 }
-
-QUERY_GENERATE_MAPPER_CUSTOM = {
-    DatasetNames.FOREST_DATA: get_sample_queries,
-}
-
 
 def none_class():
     return None

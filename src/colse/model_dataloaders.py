@@ -4,6 +4,8 @@
 from loguru import logger
 from torch.utils.data import Dataset
 
+from colse.data_conversion_params import DataConversionParamValues, DataConversionParams
+from colse.dataset_names import DatasetNames
 from colse.model_utils import convert_to_residual
 from colse.residual_data_conversion import DataConversion
 
@@ -32,8 +34,16 @@ def make_dataset(dataset, num=-1):
         return LWQueryDataset(X[:num], y[:num], gt[:num])
 
 
-def load_lw_dataset(args, excel_path_train, excel_path_valid=None):
-    dc = DataConversion(dataset_name=args.dataset)
+def load_lw_dataset(args):
+    excel_path_train = args.train_excel_path
+    excel_path_valid = args.test_excel_path
+    dataset_type = DatasetNames(args.dataset_name)
+
+    update_type = args.update_type if args.update_type else None
+    dc_params = DataConversionParams(dataset_type, update_type)
+    df_param_obj : DataConversionParamValues = dc_params.load_data_conversion_params()
+
+    dc = DataConversion(dataset_name=dataset_type, df_param_obj=df_param_obj)
     rd = dc.convert(excel_path_train, use_cache=False)
     x, y, gt = convert_to_residual(rd)
 

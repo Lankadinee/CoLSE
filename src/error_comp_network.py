@@ -28,14 +28,15 @@ class ErrorCompensationNetwork:
         # Load model weights
         self.model.load_state_dict(state["model_state_dict"])
         # Store normalization parameters
+        # TODO: Store these three values in the model state dict in the training stage
         self.max_values = dataset.scaler.data_max_
         self.min_values = dataset.scaler.data_min_
+        self.no_of_rows = dataset.no_of_rows
         # Prepare double indices for normalization
         indices = np.arange(len(self.min_values) * 2) // 2
         self.min_values_double = self.min_values[indices]
         self.diff = self.max_values - self.min_values
         self.diff_double = self.diff[indices]
-        self.no_of_rows = dataset.no_of_rows
 
     def report_model(self, blacklist=None):
         ps = []

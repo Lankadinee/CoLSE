@@ -9,6 +9,7 @@ from loguru import logger
 from tqdm import tqdm
 
 from colse.custom_data_generator import CustomDataGen
+from colse.data_conversion_params import DataConversionParamValues, DataConversionParams
 from colse.data_path import get_data_path
 from colse.dataset_names import DatasetNames
 from colse.spline_dequantizer import SplineDequantizer
@@ -34,11 +35,11 @@ class ResidualData:
 class DataConversion:
     VERSION = "1-0-0"
 
-    def __init__(self, dataset_name: DatasetNames = DatasetNames.FOREST_DATA):
+    def __init__(self, dataset_name: DatasetNames, df_param_obj: DataConversionParamValues):
         self.dataset_name = dataset_name
-        self.max_values = None
-        self.min_values = None
-        self.no_of_rows = None
+        self.max_values = df_param_obj.max_values
+        self.min_values = df_param_obj.min_values
+        self.no_of_rows = df_param_obj.no_of_rows
 
     def convert(self, excel_file_path, use_cache=True):
         # Create ReData folder if it doesn't exist
@@ -59,28 +60,17 @@ class DataConversion:
         start_time = time.time()
         logger.info(f"Converting data Started..., using {name}")
         s_dequantize = SplineDequantizer(dataset_type=self.dataset_name)
+        sd_file_name = s_dequantize.get_dequantized_dataset_name()
+        if sd_file_name is None:
+            sd_file_name = self.dataset_name.get_file_path()
         if self.max_values is None:
-            dataset = CustomDataGen(
-                no_of_rows=None,
-                no_of_queries=None,
-                dataset_type=self.dataset_name,
-                data_file_name=s_dequantize.get_dequantized_dataset_name(),
-                data_split="train",
-                selected_cols=None,
-                scalar_type="min_max",  # 'min_max' or 'standard
-                dequantize=False,
-                seed=1,
-                is_range_queries=True,
-                verbose=False,
-            )
-            dataset.generate_dataset()
+            raise ValueError("Max values are not set")
 
-            self.max_values = dataset.scaler.data_max_
-            self.min_values = dataset.scaler.data_min_
-            self.no_of_rows = dataset.no_of_rows
-
+        logger.info(f"Loading data from {excel_file_path}")
         df = pd.read_excel(excel_file_path)
 
+        df = df[df['X'].apply(lambda x: isinstance(x, str))]
+        logger.info(f"Loaded {len(df)} rows")
         x_cdf = df["X"].to_list()
         x_cdf = [np.array(xc.split(","), dtype=np.float64).tolist() for xc in x_cdf]
         query = df["mapped_query"].to_numpy()

@@ -15,8 +15,8 @@ def main():
     # pickle save dequantize object and get the file size
     import pickle
     import os
-    DATASET_NAME = "power"
-    pickle_file_path = f"data/cdf_cache/{DATASET_NAME}/spline_dequantizer_cache.pkl"
+    DATASET_NAME = "tpch_lineitem_10"
+    pickle_file_path = f"data/cdf_cache/{DATASET_NAME}/cdf_cache.pkl"
     file_size = os.path.getsize(pickle_file_path)
     print(f"Dequantize object size: {file_size / 1024 / 1024} mb")
 

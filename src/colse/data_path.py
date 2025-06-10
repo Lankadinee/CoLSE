@@ -10,6 +10,7 @@ class DataPathDir(StrEnum):
     THETA_CACHE = auto()
     DATAGEN_CACHE = auto()
     DATA_UPDATES = auto()
+    DATA_CONVERSION_PARAMS = auto()
 
 def get_data_path(*args):
     CWD = Path(__file__).resolve().parent

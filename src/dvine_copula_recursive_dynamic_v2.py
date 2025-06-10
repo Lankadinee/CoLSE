@@ -12,6 +12,7 @@ from tqdm import tqdm
 
 from colse.copula_types import CopulaTypes
 from colse.custom_data_generator import CustomDataGen
+from colse.data_conversion_params import DataConversionParams
 from colse.data_path import DataPathDir, get_data_path, get_log_path, get_model_path
 from colse.dataset_names import DatasetNames
 from colse.datasets.preprocess import preprocess_dataset
@@ -71,7 +72,7 @@ def main():
     parsed_args = parse_args()
     data_split = parsed_args.data_split
     dataset_type = DatasetNames(parsed_args.dataset_name)
-    logger.info(f"Dataset Type: {parsed_args.dataset_name} -> {dataset_type}")
+    logger.info(f"Dataset Type: {parsed_args.dataset_name} -> {dataset_type.name}")
 
     NO_OF_ROWS = None
     QUERY_SIZE = None
@@ -79,7 +80,7 @@ def main():
     NO_OF_COLUMNS = len(COLUMN_INDEXES)
 
     # pre process dataset
-    preprocess_dataset(dataset_type)
+    preprocess_dataset(dataset_type, skip_if_exists=True)
     
     error_comp_model = None
     error_comp_model_path = None
@@ -95,10 +96,7 @@ def main():
 
     excel_file_path = get_data_path(DataPathDir.EXCELS) / f"{parsed_args.output_excel_name}"
     COPULA_TYPE = CopulaTypes.GUMBEL
-    theta_cache_path = (
-        get_data_path(DataPathDir.THETA_CACHE, dataset_type.value)
-        / f"{COPULA_TYPE}_{NO_OF_COLUMNS}.pkl"
-    )
+    theta_cache_path = get_data_path(DataPathDir.THETA_CACHE, dataset_type.value) / f"{parsed_args.theta_cache_path}"
     
     max_unique_values = (
         int(parsed_args.max_unique_values)
@@ -113,7 +111,7 @@ def main():
         output_file_name = f"{DataPathDir.DATA_UPDATES}/dequantized_v2_{parsed_args.update_type}.parquet"
         query_file_name = f"{DataPathDir.DATA_UPDATES}/query_{parsed_args.update_type}.json"
     else:
-        original_file_name = None
+        original_file_name = dataset_type.get_file_path()
         output_file_name = "dequantized_v2.parquet"
         query_file_name = None
 
@@ -127,8 +125,10 @@ def main():
     if dequantized_file_name:
         datagen_load_file_name = dequantized_file_name
     else:
-        datagen_load_file_name = dataset_type.get_file_path(original_file_name)
+        datagen_load_file_name = original_file_name
 
+    logger.info(f"Loading dataset from {datagen_load_file_name}")
+    logger.info(f"Query file name: {query_file_name}")
     dataset = CustomDataGen(
         no_of_rows=NO_OF_ROWS,
         no_of_queries=None,
@@ -144,6 +144,9 @@ def main():
         verbose=False,
         enable_query_dequantize=False,
     )
+
+    dc_params = DataConversionParams(dataset_type, parsed_args.update_type)
+    dc_params.store_data_conversion_params(dataset)
 
     if error_comp_model_path:
         error_comp_model = ErrorCompensationNetwork(error_comp_model_path, dataset)
@@ -162,10 +165,15 @@ def main():
     query_r = dataset.query_r[:, COLUMN_INDEXES]
     actual_ce_ds = dataset.true_card
 
-    query_size = 100 # TODO: Remove this
-    new_query_l = query_l[:query_size]
-    new_query_r = query_r[:query_size]
-    actual_ce = actual_ce_ds[:query_size]
+    # query_size = 100 # TODO: Remove this
+    if parsed_args.update_type and data_split == "train":
+        new_query_l = query_l[:8000]
+        new_query_r = query_r[:8000]
+        actual_ce = actual_ce_ds[:8000]
+    else:
+        new_query_l = query_l
+        new_query_r = query_r
+        actual_ce = actual_ce_ds
 
     logger.info(f"Query Size: {len(new_query_l)}")
 

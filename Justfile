@@ -48,17 +48,29 @@ test dataset_name="forest": install
 retrain dataset_name="forest" update-type="ind_0.2": install
     uv run src/dvine_copula_recursive_dynamic_v2.py --data_split train --dataset_name {{dataset_name}} \
     --output_excel_name dvine_v1_{{dataset_name}}_train_sample_retrained_{{update-type}}.xlsx \
-    --theta_cache_path "theta_cache_retrained.pkl" --cdf_cache_name "cdf_cache_retrained.pkl" --update_type {{update-type}}
+    --theta_cache_path "theta_cache_{{update-type}}.pkl" --cdf_cache_name "cdf_cache_{{update-type}}.pkl" --update_type {{update-type}}
 
     uv run src/residual_model_train.py --dataset_name {{dataset_name}} \
-    --train_excel_path data/excels/dvine_v1_{{dataset_name}}_train_sample_retrained_{{update-type}}.xlsx --epochs 5 \
-    --pretrained_model_name "error_comp_model.pt" --output_model_name "error_comp_model_retrained.pt" 
+    --train_excel_path data/excels/dvine_v1_{{dataset_name}}_train_sample_retrained_{{update-type}}.xlsx --epochs 10 \
+    --pretrained_model_name "error_comp_model.pt" --output_model_name "error_comp_model_retrained_{{update-type}}.pt" --update_type {{update-type}}
 
 # Test the retrained model
 retest dataset_name="forest" update-type="ind_0.2": install
     uv run src/dvine_copula_recursive_dynamic_v2.py --data_split test --dataset_name {{dataset_name}} \
-    --output_excel_name dvine_v1_{{dataset_name}}_test_sample_retrained_{{update-type}}.xlsx --model_name "error_comp_model_retrained.pt" \
-    --theta_cache_path "theta_cache_retrained.pkl" --cdf_cache_name "cdf_cache_retrained.pkl" --update_type {{update-type}}
+    --output_excel_name dvine_v1_{{dataset_name}}_test_sample_retrained_{{update-type}}.xlsx --model_name "error_comp_model_retrained_{{update-type}}.pt" \
+    --theta_cache_path "theta_cache_{{update-type}}.pkl" --cdf_cache_name "cdf_cache_{{update-type}}.pkl" --update_type {{update-type}}
+
+# Test with the existing model
+test-existing dataset_name="forest" update-type="ind_0.2": install
+    uv run src/dvine_copula_recursive_dynamic_v2.py --data_split test --dataset_name {{dataset_name}} \
+    --output_excel_name dvine_v1_{{dataset_name}}_test_sample_{{update-type}}.xlsx --model_name "error_comp_model.pt" \
+    --theta_cache_path "theta_cache.pkl" --cdf_cache_name "cdf_cache.pkl" --update_type {{update-type}}
+
+# Test with the updated model
+test-updated dataset_name="forest" update-type="ind_0.2": install
+    uv run src/dvine_copula_recursive_dynamic_v2.py --data_split test --dataset_name {{dataset_name}} \
+    --output_excel_name dvine_v1_{{dataset_name}}_test_sample_updated_{{update-type}}.xlsx --model_name "error_comp_model.pt" \
+    --theta_cache_path "theta_cache_{{update-type}}.pkl" --cdf_cache_name "cdf_cache_{{update-type}}.pkl" --update_type {{update-type}}
 
 # Run all the commands
 all: install download train test

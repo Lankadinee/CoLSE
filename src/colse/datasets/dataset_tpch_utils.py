@@ -12,9 +12,14 @@ from colse.datasets.params import ROW_PREFIX
 from colse.df_utils import load_dataframe, save_dataframe
 
 
-def tpch_lineitem_preprocess(dataset_type: DatasetNames):
+def tpch_lineitem_preprocess(dataset_type: DatasetNames, skip_if_exists: bool = False):
 
     input_file_path = get_data_path(dataset_type) / "original.parquet"
+    output_file_path = dataset_type.get_file_path(exist_check=False)
+
+    if skip_if_exists and output_file_path.exists():
+        logger.info(f"Skipping {dataset_type} dataset preprocessing because it already exists")
+        return True
 
     logger.info(f"Preprocessing {dataset_type} dataset from - {input_file_path}")
     df = load_dataframe(input_file_path)
@@ -31,7 +36,6 @@ def tpch_lineitem_preprocess(dataset_type: DatasetNames):
     df["l_receiptdate"] = (df["l_receiptdate"] - min_date).dt.days
     df["l_shipdate"] = (df["l_shipdate"] - min_date).dt.days
 
-    output_file_path = dataset_type.get_file_path(exist_check=False)
     save_dataframe(df, output_file_path)
     logger.info(f"Preprocessed {dataset_type} dataset saved to - {output_file_path}")
     return True

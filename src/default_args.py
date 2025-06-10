@@ -27,6 +27,7 @@ class Args:
 
         self.dataset = DatasetNames(self.dataset_name)
         self.fea_num = self.dataset.get_no_of_columns() * 2 + self.additional_features
+        self.update_type = kwargs.get("update_type", None)
 
     def __str__(self):
         return f"Args: {self.__dict__}"

@@ -71,9 +71,7 @@ def train_lw_nn(output_model_path, pretrained_model_path, seed=42):
         logger.info(f"Loaded pretrained model from {pretrained_model_path}")
 
     # load dataset
-    dataset = load_lw_dataset(
-        args=args, excel_path_train=args.train_excel_path, excel_path_valid=None
-    )
+    dataset = load_lw_dataset(args=args)
     train_dataset = make_dataset(
         dataset["train"], num=int(args.no_of_queries * args.train_test_split)
     )
@@ -292,7 +290,7 @@ def parse_args():
     parser.add_argument(
         "--test_excel_path",
         type=str,
-        default=temp_args.test_excel_path,
+        default=None,
         help="Path to the testing Excel file",
     )
     parser.add_argument(
@@ -317,6 +315,9 @@ def parse_args():
     )
     parser.add_argument(
         "--pretrained_model_name", type=str, default=None, help="Model name"
+    )
+    parser.add_argument(
+        "--update_type", type=str, default=None, help="Type of update to the dataset"
     )
     return parser.parse_args()
 
