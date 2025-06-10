@@ -1,9 +1,10 @@
 from pathlib import Path
 
 import pandas as pd
-
+from loguru import logger
 
 def load_dataframe(file_path: str | Path):
+    logger.info(f"Loading dataframe from {file_path}")
     if isinstance(file_path, str):
         file_path = Path(file_path)
 
@@ -18,6 +19,7 @@ def load_dataframe(file_path: str | Path):
 
 
 def save_dataframe(df: pd.DataFrame, file_path: str | Path):
+    logger.info(f"Saving dataframe to {file_path}")
     if isinstance(file_path, str):
         file_path = Path(file_path)
 

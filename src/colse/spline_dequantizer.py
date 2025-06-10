@@ -72,7 +72,6 @@ class SplineDequantizer:
             if path.exists():
                 self.load_from_pickle(path)
                 self._already_loaded = True
-                logger.info(f"Dequantizer loaded from {path}")
             else:
                 logger.warning(f"Dequantizer cache not found at {path}")
 
