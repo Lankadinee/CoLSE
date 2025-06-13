@@ -53,12 +53,18 @@ CURRENT_DIR = Path(__file__).parent.parent.parent
 
 logger.info(CURRENT_DIR)
 
+def get_file_size_in_mb(file_path: Path) -> str:
+    """Get the file size in MB."""
+    if file_path.exists():
+        return f"{file_path.stat().st_size / (1024 * 1024):.3f}"  # Convert bytes to MB
+    return "N/A"
+
 class Prerequisists:
-    EXTERNAL_PRED_PATH = Path("/datadrive500/AreCELearnedYet")
+    EXTERNAL_PRED_PATH = Path("/home/titan/phd/CoLSE")
     def __init__(self, dataset_name: DatasetNames, update_type: UpdateTypes, model_name: ModelNames):
-        self.dataset_name = DatasetNames(dataset_name) if isinstance(dataset_name, str) else dataset_name
-        self.model_name = ModelNames(model_name) if isinstance(model_name, str) else model_name
-        self.update_type = UpdateTypes(update_type) if isinstance(update_type, str) else update_type
+        self.dataset_name = DatasetNames(dataset_name) if dataset_name in DatasetNames else None
+        self.model_name = ModelNames(model_name) if model_name in ModelNames else None
+        self.update_type = UpdateTypes(update_type) if update_type in UpdateTypes else None
         self.list_of_retrained_models = []
 
         # query paths
@@ -86,7 +92,7 @@ class Prerequisists:
             # self.prediction_path = Prerequisists.EXTERNAL_PRED_PATH /  f"/output/result/{self.dataset_name}/{self.update_type}_existing/updated_model/"
             if self.update_type:
                 pattern_1 = str(Prerequisists.EXTERNAL_PRED_PATH / f"output/result/{self.dataset_name}/{self.update_type}_existing_model/*{self.model_name}*.csv")
-                pattern_2 = str(Prerequisists.EXTERNAL_PRED_PATH / f"output/result/{self.dataset_name}*{self.update_type}_updated_model/*{self.model_name}*.csv")
+                pattern_2 = str(Prerequisists.EXTERNAL_PRED_PATH / f"output/result/{self.dataset_name}/{self.update_type}_updated_model/*{self.model_name}*.csv")
                 self.prediction_paths_source = [Path(p) for p in glob(pattern_1)] + [Path(p) for p in glob(pattern_2)]
                 no_of_predictions = len(self.prediction_paths_source)
                 assert no_of_predictions < 3, f"You cannot have more than 2 predictions for ACE model got [{no_of_predictions}]s - {self.prediction_paths_source}"
@@ -108,14 +114,14 @@ class Prerequisists:
             
         # original dataset paths
         if self.dataset_name.is_tpch_type():
-            self.original_dataset_path_source = get_data_path(self.dataset_name.value) / "original.csv"
+            self.original_dataset_path_source = get_data_path(self.dataset_name.value) / "original.parquet"
             if not self.original_dataset_path_source.exists():
                 # Try alternative path if original.csv does not exist
-                alt_path = Path(f"{Prerequisists.EXTERNAL_PRED_PATH}/data/{self.dataset_name.value}/original.csv")
+                alt_path = Path(f"{Prerequisists.EXTERNAL_PRED_PATH}/data/{self.dataset_name.value}/original.parquet")
                 if alt_path.exists():
                     self.original_dataset_path_source = alt_path
         else:
-            self.original_dataset_path_source = self.dataset_name.get_file_path(self.update_type) if self.update_type == 'none' else self.dataset_name.get_file_path(filename=f"data_updates/original_{self.update_type}.csv")
+            self.original_dataset_path_source = self.dataset_name.get_file_path(self.update_type) if self.update_type == None else self.dataset_name.get_file_path(filename=f"data_updates/original_{self.update_type}.parquet")
         if not self.original_dataset_path_source.exists():
             raise FileNotFoundError(f"Original dataset file not found: {self.original_dataset_path_source}")
         if self.update_type:
@@ -143,16 +149,16 @@ class Prerequisists:
         table.add_column("Size (MB)")
         table.add_column("Exists")
 
-        table.add_row("Query", "source", str(self.query_json_file_source), f"{self.query_json_file_source.stat().st_size/1024/1024:.3f}", "True")
-        table.add_row("Query", "destination", str(self.query_sql_file), "NA", f"{self.query_sql_file.exists()}")
-        table.add_row("Original Dataset", "source", str(self.original_dataset_path_source), f"{self.original_dataset_path_source.stat().st_size/1024/1024:.3f}", "True")
-        table.add_row("Original Dataset", "destination", str(self.original_dataset_path_destination), "NA", f"{self.original_dataset_path_destination.exists()}")
-        table.add_row("True Cardinality", "source", str(self.true_cardinality_path_source), f"{self.true_cardinality_path_source.stat().st_size/1024/1024:.3f}", "True")
-        table.add_row("True Cardinality", "destination", str(self.true_cardinality_path_destination), "NA", f"{self.true_cardinality_path_destination.exists()}")
+        table.add_row("Query", "source", str(self.query_json_file_source), f"{get_file_size_in_mb(self.query_json_file_source)}", "True")
+        table.add_row("Query", "destination", str(self.query_sql_file), f"{get_file_size_in_mb(self.query_sql_file)}", f"{self.query_sql_file.exists()}")
+        table.add_row("Original Dataset", "source", str(self.original_dataset_path_source), f"{get_file_size_in_mb(self.original_dataset_path_source)}", "True")
+        table.add_row("Original Dataset", "destination", str(self.original_dataset_path_destination), f"{get_file_size_in_mb(self.original_dataset_path_destination)}", f"{self.original_dataset_path_destination.exists()}")
+        table.add_row("True Cardinality", "source", str(self.true_cardinality_path_source), f"{get_file_size_in_mb(self.true_cardinality_path_source)}", "True")
+        table.add_row("True Cardinality", "destination", str(self.true_cardinality_path_destination), f"{get_file_size_in_mb(self.true_cardinality_path_destination)}", f"{self.true_cardinality_path_destination.exists()}")
 
         for index, (prediction_path_source, prediction_path_destination) in enumerate(zip(self.prediction_paths_source, self.prediction_paths_destination)):
-            table.add_row("Prediction", f"source-{index + 1}", str(prediction_path_source), f"{prediction_path_source.stat().st_size/1024/1024:.3f}", "True")
-            table.add_row("Prediction", f"destination-{index + 1}", str(prediction_path_destination), "NA", f"{prediction_path_destination.exists()}")
+            table.add_row("Prediction", f"source-{index + 1}", str(prediction_path_source), f"{get_file_size_in_mb(prediction_path_source)}", "True")
+            table.add_row("Prediction", f"destination-{index + 1}", str(prediction_path_destination), f"{get_file_size_in_mb(prediction_path_destination)}", f"{prediction_path_destination.exists()}")
         
         
         console = Console()
@@ -232,15 +238,28 @@ if __name__ == "__main__":
     # df = pd.DataFrame(param_list)
     # df.to_csv("param_list.csv", index=False)
 
+    # load last index from file
+    try:
+        with open("last_index.txt", "r") as f:
+            last_index = int(f.read().strip())
+    except FileNotFoundError:
+        last_index = 0
+    logger.info(f"Last index: {last_index}")
+
+
     df = pd.read_csv("param_list.csv", header=None)
     # for index, row in df.iterrows():
-    for index, row in df.iloc[14:].iterrows():
+    for index, row in df.iloc[last_index:].iterrows():
         # try:
         dataset_name, model_name, update_type = row
-        dataset_name = DatasetNames(dataset_name)
-        model_name = ModelNames(model_name)
-        update_type = UpdateTypes(update_type) if update_type != "none" else None
         prerequisists = Prerequisists(dataset_name, update_type, model_name)
-        prerequisists.execute(user_input=True)
+        prerequisists.execute(user_input=False)
         # except Exception as e:
         #     logger.error(f"Error for {dataset_name} with {update_type} and {model_name}: {e}")
+        
+        # save last index to a file
+        with open("last_index.txt", "w") as f:
+            f.write(str(index))
+        logger.info(f"Completed for {dataset_name} with {update_type} and {model_name}")
+        logger.info(f"Last index saved: {index}")
+    logger.info("All done!")

@@ -55,7 +55,7 @@ class DatasetNames(str, Enum):
             )
         elif self.is_correlated_type():
             dp = get_data_path(self.value) / (
-                filename if filename else "original.csv"
+                filename if filename else "original.parquet"
             )
         else:
             raise ValueError(f"Dataset {self} not supported")
