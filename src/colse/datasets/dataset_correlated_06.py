@@ -100,7 +100,7 @@ def get_queries_correlated_06(**kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndar
         query_r.append(np.array(ub_list))
 
     "Load true cardinality"
-    labels = pd.read_csv(dataset_dir.joinpath(f"label_correlated_0.6_{data_split}.csv"))
+    labels = pd.read_csv(dataset_dir.joinpath(f"label_{data_split}.csv"))
     true_card = labels["cardinality"].to_numpy().astype(int)
 
     # if data_split == "train":

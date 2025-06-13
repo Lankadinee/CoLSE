@@ -7,45 +7,62 @@ from typing import List, Optional
 
 import numpy as np
 import pandas as pd
+from loguru import logger
+from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
+from tqdm import tqdm
+
+from colse.data_path import get_data_path
+from colse.dataset_names import DatasetNames
 from colse.datasets.dataset_census import generate_dataset as generate_dataset_census
 from colse.datasets.dataset_census import get_queries_census
+from colse.datasets.dataset_correlated_02 import (
+    generate_dataset_correlated_02,
+    get_queries_correlated_02,
+)
+from colse.datasets.dataset_correlated_04 import (
+    generate_dataset_correlated_04,
+    get_queries_correlated_04,
+)
+from colse.datasets.dataset_correlated_06 import (
+    generate_dataset_correlated_06,
+    get_queries_correlated_06,
+)
+from colse.datasets.dataset_correlated_08 import (
+    generate_dataset_correlated_08,
+    get_queries_correlated_08,
+)
 from colse.datasets.dataset_dmv import generate_dataset as generate_dataset_dmv
 from colse.datasets.dataset_dmv import get_queries_dmv
 from colse.datasets.dataset_forest import generate_dataset as generate_dataset_forest
-from colse.datasets.dataset_forest import get_queries_forest, get_sample_queries
+from colse.datasets.dataset_forest import get_queries_forest
 from colse.datasets.dataset_gas import generate_dataset as generate_dataset_gas
 from colse.datasets.dataset_gas import get_queries
-from colse.dataset_names import DatasetNames
 from colse.datasets.dataset_power import generate_dataset as generate_dataset_power
 from colse.datasets.dataset_power import get_queries_power
-from colse.datasets.dataset_synthetic_correlated_10 import generate_dataset_correlated_10, get_queries_correlated_10
-from colse.datasets.dataset_synthetic_correlated_2 import generate_dataset_correlated_2, get_queries_correlated_2
-from colse.datasets.dataset_synthetic_correlated_3 import generate_dataset_correlated_3, get_queries_correlated_3
-from colse.datasets.dataset_synthetic_correlated_4 import generate_dataset_correlated_4, get_queries_correlated_4
-from colse.datasets.dataset_synthetic_correlated_6 import generate_dataset_correlated_6, get_queries_correlated_6
-from colse.datasets.dataset_synthetic_correlated_8 import generate_dataset_correlated_8, get_queries_correlated_8
-from colse.datasets.dataset_tpch_lineitem_10 import generate_dataset_tpch_lineitem_10, get_queries_tpch_lineitem_10
-from colse.datasets.dataset_tpch_lineitem_20 import generate_dataset_tpch_lineitem_20, get_queries_tpch_lineitem_20
-from colse.datasets.dataset_tpch_sf2_z0_lineitem import generate_dataset_tpch_sf2_z0_lineitem, get_queries_tpch_sf2_z0_lineitem
-from colse.datasets.dataset_tpch_sf2_z1_lineitem import generate_dataset_tpch_sf2_z1_lineitem, get_queries_tpch_sf2_z1_lineitem
-from colse.datasets.dataset_tpch_sf2_z2_lineitem import generate_dataset_tpch_sf2_z2_lineitem, get_queries_tpch_sf2_z2_lineitem
-from colse.datasets.dataset_tpch_sf2_z3_lineitem import generate_dataset_tpch_sf2_z3_lineitem, get_queries_tpch_sf2_z3_lineitem
-from colse.datasets.dataset_tpch_sf2_z4_lineitem import generate_dataset_tpch_sf2_z4_lineitem, get_queries_tpch_sf2_z4_lineitem
-from colse.datasets.dataset_correlated_02 import generate_dataset_correlated_02, get_queries_correlated_02
-from colse.datasets.dataset_correlated_04 import generate_dataset_correlated_04, get_queries_correlated_04
-from colse.datasets.dataset_correlated_06 import generate_dataset_correlated_06, get_queries_correlated_06
-from colse.datasets.dataset_correlated_08 import generate_dataset_correlated_08, get_queries_correlated_08
+from colse.datasets.dataset_tpch_lineitem import (
+    generate_dataset_tpch_lineitem_10,
+    generate_dataset_tpch_lineitem_20,
+    generate_dataset_tpch_sf2_z0_lineitem,
+    generate_dataset_tpch_sf2_z1_lineitem,
+    generate_dataset_tpch_sf2_z2_lineitem,
+    generate_dataset_tpch_sf2_z3_lineitem,
+    generate_dataset_tpch_sf2_z4_lineitem,
+    get_queries_tpch_lineitem_10,
+    get_queries_tpch_lineitem_20,
+    get_queries_tpch_sf2_z0_lineitem,
+    get_queries_tpch_sf2_z1_lineitem,
+    get_queries_tpch_sf2_z2_lineitem,
+    get_queries_tpch_sf2_z3_lineitem,
+    get_queries_tpch_sf2_z4_lineitem,
+)
 from colse.datasets.dataset_v1 import generate_dataset as generate_dataset_v1
 from colse.datasets.dataset_v2 import generate_dataset as generate_dataset_v2
 from colse.datasets.dataset_v3 import generate_dataset as generate_dataset_v3
 from colse.datasets.params import ROW_PREFIX, SAMPLE_PREFIX
 from colse.datasets.query_filter import filter_queries
-from colse.datasets.variable_dataset import generate_dataset as generate_dataset_variable
-from colse.data_path import get_data_path
-from loguru import logger
-from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
-from tqdm import tqdm
-
+from colse.datasets.variable_dataset import (
+    generate_dataset as generate_dataset_variable,
+)
 from colse.transform_datasets import convert_df_to_dequantize
 
 DS_TYPE_MAPPER = {
@@ -58,12 +75,6 @@ DS_TYPE_MAPPER = {
     DatasetNames.VARIABLE: generate_dataset_variable,
     DatasetNames.CENSUS_DATA: generate_dataset_census,
     DatasetNames.DMV_DATA: generate_dataset_dmv,
-    DatasetNames.CORRELATED_2: generate_dataset_correlated_2,
-    DatasetNames.CORRELATED_3: generate_dataset_correlated_3,
-    DatasetNames.CORRELATED_4: generate_dataset_correlated_4,
-    DatasetNames.CORRELATED_6: generate_dataset_correlated_6,
-    DatasetNames.CORRELATED_8: generate_dataset_correlated_8,
-    DatasetNames.CORRELATED_10: generate_dataset_correlated_10,
     DatasetNames.TPCH_SF2_Z0_LINEITEM: generate_dataset_tpch_sf2_z0_lineitem,
     DatasetNames.TPCH_SF2_Z1_LINEITEM: generate_dataset_tpch_sf2_z1_lineitem,
     DatasetNames.TPCH_SF2_Z2_LINEITEM: generate_dataset_tpch_sf2_z2_lineitem,
@@ -83,12 +94,6 @@ QUERY_GENERATE_MAPPER = {
     DatasetNames.POWER_DATA: get_queries_power,
     DatasetNames.CENSUS_DATA: get_queries_census,
     DatasetNames.DMV_DATA: get_queries_dmv,
-    DatasetNames.CORRELATED_2: get_queries_correlated_2,
-    DatasetNames.CORRELATED_3: get_queries_correlated_3,
-    DatasetNames.CORRELATED_4: get_queries_correlated_4,
-    DatasetNames.CORRELATED_6: get_queries_correlated_6,
-    DatasetNames.CORRELATED_8: get_queries_correlated_8,
-    DatasetNames.CORRELATED_10: get_queries_correlated_10,
     DatasetNames.TPCH_SF2_Z0_LINEITEM: get_queries_tpch_sf2_z0_lineitem,
     DatasetNames.TPCH_SF2_Z1_LINEITEM: get_queries_tpch_sf2_z1_lineitem,
     DatasetNames.TPCH_SF2_Z2_LINEITEM: get_queries_tpch_sf2_z2_lineitem,
@@ -102,16 +107,16 @@ QUERY_GENERATE_MAPPER = {
     DatasetNames.CORRELATED_08: get_queries_correlated_08,
 }
 
-QUERY_GENERATE_MAPPER_CUSTOM = {
-    DatasetNames.FOREST_DATA: get_sample_queries,
-}
-
-
 def none_class():
     return None
 
 
-SCALAR_MAPPER = {"min_max": MinMaxScaler, "standard": StandardScaler, "robust": RobustScaler, "none": none_class}
+SCALAR_MAPPER = {
+    "min_max": MinMaxScaler,
+    "standard": StandardScaler,
+    "robust": RobustScaler,
+    "none": none_class,
+}
 
 
 @dataclass
@@ -121,13 +126,15 @@ class MoreInfo:
 
 
 class CustomDataGen:
-    LOAD_FROM_CACHE = True
+    LOAD_FROM_CACHE = False
 
     def __init__(
         self,
         no_of_rows: Optional[int] = 500000,
         no_of_queries: Optional[int] = 1000,
         dataset_type: DatasetNames = DatasetNames.PAYROLL_DATA,
+        data_file_name: str | None = None,
+        query_file_name: str | None = None,
         data_split="test",
         selected_cols: Optional[list] = None,
         scalar_type: str = "min_max",
@@ -135,12 +142,17 @@ class CustomDataGen:
         seed: int = 0,
         is_range_queries: bool = True,
         verbose: bool = True,
+        **kwargs,
     ):
 
         np.random.seed(seed)
         self.seed = seed
         self.selected_cols = selected_cols
-        col_str = "".join([str(cid) for cid in selected_cols]) if selected_cols is not None else "all"
+        col_str = (
+            "".join([str(cid) for cid in selected_cols])
+            if selected_cols is not None
+            else "all"
+        )
         self.datagen_name = (
             get_data_path()
             / f"CDG_cache/custom_data_gen_{dataset_type}_R{no_of_rows}_S{no_of_queries}_C{col_str}_S{scalar_type}_split-{data_split}_q{dequantize}"
@@ -158,13 +170,17 @@ class CustomDataGen:
         self.scaler = None
         self.sample_query_col_list = []
         self.dequantize = dequantize
+        self.enable_query_dequantize = kwargs.get("enable_query_dequantize", False)
         self.verbose = verbose
         self.is_range_queries = is_range_queries
         self.more_info = MoreInfo()
         self.splines = dict()
-
+        self.data_file_name = data_file_name
+        self.query_file_name = query_file_name
         (
-            logger.info(f"Checking saved data generator {self.datagen_name.name} exists {self.datagen_name.exists()}")
+            logger.info(
+                f"Checking saved data generator {self.datagen_name.name} exists {self.datagen_name.exists()}"
+            )
             if CustomDataGen.LOAD_FROM_CACHE
             else ""
         )
@@ -191,7 +207,7 @@ class CustomDataGen:
         logger.info(
             f"Dataset {self.dataset_type} generated with {self.no_of_rows} rows and {self.no_of_queries} samples"
         )
-    
+
     def filter_queries_by_cols(self, columns: List[int]):
         query_l = self.query_l[columns]
         query_r = self.query_r[columns]
@@ -229,7 +245,11 @@ class CustomDataGen:
             raise ValueError(f"Dataset type {self.dataset_type} not supported")
 
         if df is None:
-            df = DS_TYPE_MAPPER[self.dataset_type](no_of_rows=self.no_of_rows, selected_cols=self.selected_cols)
+            df = DS_TYPE_MAPPER[self.dataset_type](
+                no_of_rows=self.no_of_rows,
+                selected_cols=self.selected_cols,
+                data_file_name=self.data_file_name,
+            )
 
             if self.dequantize:
                 df, self.splines = convert_df_to_dequantize(df)
@@ -281,7 +301,9 @@ class CustomDataGen:
     def _get_actual_cardinality(self):
         logger.info("Generating true cardinality") if self.verbose else None
         actual_card = []
-        for ub, lb in tqdm(zip(self.query_r, self.query_l), total=self.query_l.shape[0]):
+        for ub, lb in tqdm(
+            zip(self.query_r, self.query_l), total=self.query_l.shape[0]
+        ):
             actual_cdf_value = self.actual_cdf(lb, ub)
             actual_card.append(actual_cdf_value if actual_cdf_value > 1 else 1)
         return np.array(actual_card)
@@ -291,9 +313,13 @@ class CustomDataGen:
         if self.dataset_type not in QUERY_GENERATE_MAPPER:
             if self.no_of_queries is None:
                 self.no_of_queries = int(self.df.shape[0] // 10)
-                logger.info(f"Sample count not provided. Setting it to {self.no_of_queries}")
+                logger.info(
+                    f"Sample count not provided. Setting it to {self.no_of_queries}"
+                )
 
-            sample_data = self.df.sample(n=self.no_of_queries * 2).to_numpy().transpose()
+            sample_data = (
+                self.df.sample(n=self.no_of_queries * 2).to_numpy().transpose()
+            )
             rng = np.random.default_rng()
 
             def shuffle_and_return(x):
@@ -301,7 +327,12 @@ class CustomDataGen:
                 return x
 
             sample_data = np.array([shuffle_and_return(d) for d in sample_data])
-            data_samples = np.array([[d[: self.no_of_queries], d[self.no_of_queries :]] for d in sample_data])
+            data_samples = np.array(
+                [
+                    [d[: self.no_of_queries], d[self.no_of_queries :]]
+                    for d in sample_data
+                ]
+            )
             data_samples = np.sort(data_samples, axis=1)
             data_samples = data_samples.transpose(1, 2, 0)
             self.query_l, self.query_r = data_samples[0], data_samples[1]
@@ -313,45 +344,77 @@ class CustomDataGen:
                 self.sample_query_col_list = list(range(self.no_of_features))
                 no_inf = True
 
-            self.query_l, self.query_r = QUERY_GENERATE_MAPPER_CUSTOM[self.dataset_type](
-                no_of_queries=self.no_of_queries, queried_columns=self.sample_query_col_list, no_inf=no_inf
+            self.query_l, self.query_r = QUERY_GENERATE_MAPPER_CUSTOM[
+                self.dataset_type
+            ](
+                no_of_queries=self.no_of_queries,
+                queried_columns=self.sample_query_col_list,
+                no_inf=no_inf,
             )
             self.true_card = self._get_actual_cardinality()
             return self.query_l.shape[0]
         else:
-            self.query_l, self.query_r, self.true_card = QUERY_GENERATE_MAPPER[self.dataset_type](
-                no_of_queries=self.no_of_queries, 
-                data_split=self.data_split, 
+            self.query_l, self.query_r, self.true_card = QUERY_GENERATE_MAPPER[
+                self.dataset_type
+            ](
+                no_of_queries=self.no_of_queries,
+                data_split=self.data_split,
                 min_value=self.no_of_rows / 1000,
-                is_dequantize=self.dequantize,
+                enable_query_dequantize=self.enable_query_dequantize,  # Mapping queried values to dequantized values
+                query_file_name=self.query_file_name,
             )
             if self.selected_cols is not None:
                 no_of_cols = self.query_l.shape[1]
-                remove_cols = [i for i in range(no_of_cols) if i not in self.selected_cols]
-                self.query_l, self.query_r = filter_queries(self.query_l, self.query_r, remove_cols)
+                remove_cols = [
+                    i for i in range(no_of_cols) if i not in self.selected_cols
+                ]
+                self.query_l, self.query_r = filter_queries(
+                    self.query_l, self.query_r, remove_cols
+                )
                 self.true_card = self._get_actual_cardinality()
 
             return self.query_l.shape[0]
 
     def get_groups(self, no_of_features=3):
-        groups = [[1, 2, 3], [3, 4, 5], [6, 7, 8], [9, 10, 11], [1, 2, 12], [5, 6, 7], [8, 9, 10], [1, 12, 14]]
+        groups = [
+            [1, 2, 3],
+            [3, 4, 5],
+            [6, 7, 8],
+            [9, 10, 11],
+            [1, 2, 12],
+            [5, 6, 7],
+            [8, 9, 10],
+            [1, 12, 14],
+        ]
         # how to substract 1 from all elements in the list
-        groups = [[g-1 for g in group] for group in groups]
+        groups = [[g - 1 for g in group] for group in groups]
         return groups
 
     """Get random feature combinations from a given list of numbers"""
 
-    def get_random_feature_combinations(self, no_of_features=3, length=None, no_of_combinations=None):
+    def get_random_feature_combinations(
+        self, no_of_features=3, length=None, no_of_combinations=None
+    ):
         number_list = list(range(1, no_of_features + 1))
         length = len(number_list) if length is None else length
         # Generate all possible combinations of the specified length
         all_combinations = list(combinations(number_list, length))
-        return all_combinations if no_of_combinations is None else random.sample(all_combinations, no_of_combinations)
+        return (
+            all_combinations
+            if no_of_combinations is None
+            else random.sample(all_combinations, no_of_combinations)
+        )
 
-    def get_permutations_per_groups(self, input_list, length=None, no_of_permutations=None):
+    def get_permutations_per_groups(
+        self, input_list, length=None, no_of_permutations=None
+    ):
         length = len(input_list) if length is None else length
         permutations_list = list(permutations(input_list, length))
-        return permutations_list if no_of_permutations is None else random.sample(permutations_list, no_of_permutations)
+        return (
+            permutations_list
+            if no_of_permutations is None
+            else random.sample(permutations_list, no_of_permutations)
+        )
 
     def get_df(self):
         return self.df
@@ -368,7 +431,9 @@ class CustomDataGen:
 
 
 if __name__ == "__main__":
-    cd_obj = CustomDataGen(no_of_rows=None, no_of_queries=None, dataset_type=DatasetNames.FOREST_DATA)
+    cd_obj = CustomDataGen(
+        no_of_rows=None, no_of_queries=None, dataset_type=DatasetNames.FOREST_DATA
+    )
     logger.info("Generating range queries")
     logger.info(f"Sample count: {cd_obj.query_l.shape[0]} | {cd_obj.no_of_queries}")
     # print(cd_obj.query_l.shape)

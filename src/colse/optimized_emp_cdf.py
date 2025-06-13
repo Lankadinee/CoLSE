@@ -1,12 +1,10 @@
 import numpy as np
-from colse.cdf_base import CDFBase
-from colse.emphirical_cdf import EMPMethod
 from loguru import logger
 from scipy.stats import rankdata
 
-
+from colse.cdf_base import CDFBase
 from colse.dtype_conversion import convert_to_low_precision_dtype
-
+from colse.emphirical_cdf import EMPMethod
 
 MAX_UNIQUE_VALUES = 25000
 
@@ -29,6 +27,10 @@ class OptimizedEmpiricalCDFModel(CDFBase):
             else None
         )
         self.max_unique_values = kwargs.get("max_unique_values", np.inf)
+        self._max_unique_value = None
+        self._max_unique_index = None
+        self._min_unique_value = None
+        self._min_unique_index = None
         logger.info(f"Max unique values: {self.max_unique_values}")
 
     def get_model_size(self):
@@ -43,6 +45,10 @@ class OptimizedEmpiricalCDFModel(CDFBase):
         initial_length = np.sum(_value_counts)
         current_unique = len(_value_counts)
         if self.max_unique_values == "auto":
+            """
+            if the number of unique values is less than 10% of the total number of values, then use the total number of values
+            else use the number of unique values
+            """
             self.max_unique_values = np.clip(min(int(current_unique*0.1), MAX_UNIQUE_VALUES), current_unique, MAX_UNIQUE_VALUES)
             logger.info(f"New max unique values: {self.max_unique_values}")
 
@@ -77,6 +83,19 @@ class OptimizedEmpiricalCDFModel(CDFBase):
         if self._enable_low_precision:
             self.cum_sum_array = convert_to_low_precision_dtype(self.cum_sum_array)
             self._unique_values = convert_to_low_precision_dtype(self._unique_values)
+
+        """Store the maximum unique value and its index for quick access."""
+        max_index = np.argmax(self._unique_values)
+        self._max_unique_value = self._unique_values[max_index]
+        self._max_unique_index = max_index
+        logger.info(f"max_unique_value: {self._max_unique_value} | max_unique_index: {self._max_unique_index}")
+
+        """Store the minimum unique value and its index for quick access."""
+        min_index = np.argmin(self._unique_values)
+        self._min_unique_value = self._unique_values[min_index]
+        self._min_unique_index = min_index
+
+        logger.info(f"max_unique_value: {self._max_unique_value} | min_unique_value: {self._min_unique_value}")
 
     def _get_length(self, data):
         if isinstance(data, list):
@@ -113,7 +132,9 @@ class OptimizedEmpiricalCDFModel(CDFBase):
         return positive_index, negative_index
 
     def _get_cdf(self, index):
-        return self.cum_sum_array[index] / self._length
+        cdf = self.cum_sum_array[index] / self._length
+        assert cdf >= 0 and cdf <= 1, f"cdf: {cdf} is not in the range [0, 1]"
+        return cdf
 
     def _get_previous_cdf(self, index):
         current_rank_value = self._rank[index]
@@ -125,6 +146,11 @@ class OptimizedEmpiricalCDFModel(CDFBase):
         return self._current_index
 
     def predict(self, value):
+        # logger.info(f"value: {value}")
+        if value >= self._max_unique_value:
+            return 1.0
+        if value <= self._min_unique_value:
+            return 0.0
         if value == np.inf:
             return 1
         elif value == -np.inf:
@@ -134,13 +160,17 @@ class OptimizedEmpiricalCDFModel(CDFBase):
                 self._current_index = self._get_closest_index(value)
                 return self._get_cdf(self._current_index)
             elif self._emp_method == EMPMethod.RELATIVE:
+                
+
                 positive_index, negative_index = (
                     self._get_closest_positive_and_negative_index(value)
                 )
+                # logger.info(f"positive_index: {positive_index} | negative_index: {negative_index}")
                 if positive_index == negative_index:
                     return self._get_cdf(positive_index)
                 positive_cdf = self._get_cdf(positive_index)
                 negative_cdf = self._get_cdf(negative_index)
+                assert positive_cdf >= negative_cdf, f"positive_cdf: {positive_cdf} < negative_cdf: {negative_cdf}"
                 relative_cdf = negative_cdf + (positive_cdf - negative_cdf) * (
                     value - self._unique_values[negative_index]
                 ) / (

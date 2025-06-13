@@ -12,3 +12,7 @@ data/
 *.zip
 data.bk/*
 *.json
+postgres*
+*.csv
+*.sql
+*.log
