@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -7,6 +8,9 @@ from colse.custom_data_generator import CustomDataGen
 from colse.dataset_names import DatasetNames
 from colse.error_comp_model import ErrorCompModel
 from colse.res_utils import decode_label, encode_label, multiply_pairs_norm
+
+
+logger.level(os.getenv("LOG_LEVEL", "INFO"))
 
 # Set device to GPU if available, else CPU
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -37,6 +41,7 @@ class ErrorCompensationNetwork:
         self.min_values_double = self.min_values[indices]
         self.diff = self.max_values - self.min_values
         self.diff_double = self.diff[indices]
+        self.diff_double[self.diff_double == 0] = 1
 
     def report_model(self, blacklist=None):
         ps = []
@@ -55,6 +60,9 @@ class ErrorCompensationNetwork:
             query.flatten() if hasattr(query, "flatten") else np.array(query).flatten()
         )
         # Create index array for min/max values (each pair uses same index)
+        # logger.debug(f"q_np: {q_np}")
+        # logger.debug(f"self.min_values_double: {self.min_values_double}")
+        # logger.debug(f"self.diff_double: {self.diff_double}")
         norm_q = (q_np - self.min_values_double) / self.diff_double
 
         # norm_q = (query - self.min_values) / self.diff
