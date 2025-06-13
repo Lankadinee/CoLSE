@@ -135,7 +135,7 @@ def get_queries_tpch_lineitem(
         raise FileNotFoundError(f"File {query_json.absolute()} not found")
 
     "Load true cardinality"
-    label_file_name = f"label_{dataset_type}_{data_split}.csv"
+    label_file_name = f"label_{data_split}.csv"
     logger.info(f"Loading true cardinality from {dataset_dir / label_file_name}")
     labels = load_dataframe(dataset_dir / label_file_name)
     true_card = labels["cardinality"].to_numpy().astype(int)

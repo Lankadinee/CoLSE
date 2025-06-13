@@ -4,26 +4,14 @@ from colse.data_path import get_data_path
 
 
 class DatasetNames(str, Enum):
-    CUSTOM = "custom"
-    PAYROLL_DATA = "payroll_data"
-    GAS_DATA = "gas_data"
-    CUSTOM_2 = "custom_2"
     FOREST_DATA = "forest"
     POWER_DATA = "power"
-    VARIABLE = "variable"
     CENSUS_DATA = "census"
     DMV_DATA = "dmv"
-    TPCH_SF2_Z0_LINEITEM = "tpch_sf2_z0_lineitem"
     TPCH_SF2_Z1_LINEITEM = "tpch_sf2_z1_lineitem"
     TPCH_SF2_Z2_LINEITEM = "tpch_sf2_z2_lineitem"
     TPCH_SF2_Z3_LINEITEM = "tpch_sf2_z3_lineitem"
     TPCH_SF2_Z4_LINEITEM = "tpch_sf2_z4_lineitem"
-    CORRELATED_2 = "synthetic_correlated_2"
-    CORRELATED_3 = "synthetic_correlated_3"
-    CORRELATED_4 = "synthetic_correlated_4"
-    CORRELATED_6 = "synthetic_correlated_6"
-    CORRELATED_8 = "synthetic_correlated_8"
-    CORRELATED_10 = "synthetic_correlated_10"
     TPCH_LINEITEM_10 = "tpch_lineitem_10"
     TPCH_LINEITEM_20 = "tpch_lineitem_20"
     CORRELATED_02 = "correlated_02"
@@ -36,13 +24,20 @@ class DatasetNames(str, Enum):
 
     def is_tpch_type(self):
         return (
-            self == DatasetNames.TPCH_SF2_Z0_LINEITEM
-            or self == DatasetNames.TPCH_SF2_Z1_LINEITEM
+            self == DatasetNames.TPCH_SF2_Z1_LINEITEM
             or self == DatasetNames.TPCH_SF2_Z2_LINEITEM
             or self == DatasetNames.TPCH_SF2_Z3_LINEITEM
             or self == DatasetNames.TPCH_SF2_Z4_LINEITEM
             or self == DatasetNames.TPCH_LINEITEM_10
             or self == DatasetNames.TPCH_LINEITEM_20
+        )
+    
+    def is_correlated_type(self):
+        return (
+            self == DatasetNames.CORRELATED_02
+            or self == DatasetNames.CORRELATED_04
+            or self == DatasetNames.CORRELATED_06
+            or self == DatasetNames.CORRELATED_08
         )
 
     def get_file_path(self, filename=None, exist_check=True):
@@ -57,6 +52,10 @@ class DatasetNames(str, Enum):
         elif self.is_tpch_type():
             dp = get_data_path(self.value) / (
                 filename if filename else "original_preprocessed.parquet"
+            )
+        elif self.is_correlated_type():
+            dp = get_data_path(self.value) / (
+                filename if filename else "original.csv"
             )
         else:
             raise ValueError(f"Dataset {self} not supported")
