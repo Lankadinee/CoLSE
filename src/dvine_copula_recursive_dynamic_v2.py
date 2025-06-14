@@ -27,7 +27,7 @@ current_dir = Path(__file__).resolve().parent
 iso_time_str = datetime.now().isoformat()
 iso_time_str = iso_time_str.replace(":", "-")
 logs_dir = get_log_path()
-pp_enb = False
+pp_enb = True
 logger.add(
     logs_dir.joinpath(f"training-{iso_time_str}.log"),
     rotation="1 MB",

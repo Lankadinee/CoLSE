@@ -161,7 +161,11 @@ def get_queries_tpch_lineitem(
                 lb_list.append(query[key][1])
                 ub_list.append(np.inf)
             elif isinstance(query[key], list) and query[key][0] == "=":
-                if key in dataset_type_z4.get_descrete_columns():
+                if key in [
+                            "l_receiptdate",
+                            "l_commitdate",
+                            "l_shipdate",
+                        ]:
                     no_of_days = (
                         datetime.strptime(query[key][1], "%Y-%m-%d")
                         - datetime.strptime(MIN_DATE, "%Y-%m-%d")

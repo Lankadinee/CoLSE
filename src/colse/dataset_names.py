@@ -68,14 +68,7 @@ class DatasetNames(str, Enum):
 
         return dp
 
-
-    def get_descrete_columns(self):
-        if self.is_tpch_type():
-            return []
-        else:
-            return []
-
-    def get_categorical_columns(self):
+    def get_non_continuous_columns(self):
         if self == DatasetNames.FOREST_DATA:
             return []
         elif self == DatasetNames.POWER_DATA:
@@ -110,9 +103,6 @@ class DatasetNames(str, Enum):
                 "l_linestatus",
                 "l_shipinstruct",
                 "l_shipmode",
-                "l_receiptdate",
-                "l_commitdate",
-                "l_shipdate",
             ]
         else:
             raise ValueError(f"Dataset {self} not supported")
