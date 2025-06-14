@@ -37,7 +37,7 @@ COLUMN_INDEXES = [i for i in range(dataset_type.get_no_of_columns())]
 
 def check_spline_dequantizer_performance():
     cdf_df = SplineDequantizer()
-    cdf_df.fit(df, columns=dataset_type.get_non_continuous_columns())
+    cdf_df.fit(df, cat_cols=dataset_type.get_categorical_columns())
 
     start_time = time.perf_counter()
     loop = tqdm(X, total=X.shape[0])

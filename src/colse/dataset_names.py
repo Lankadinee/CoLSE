@@ -1,5 +1,7 @@
 from enum import Enum
 
+from loguru import logger
+
 from colse.data_path import get_data_path
 
 
@@ -40,7 +42,7 @@ class DatasetNames(str, Enum):
             or self == DatasetNames.CORRELATED_08
         )
 
-    def get_file_path(self, filename=None, exist_check=True):
+    def get_file_path(self, filename=None, exist_check=True, pp_enb=True):
         if self == DatasetNames.POWER_DATA:
             dp = get_data_path(self.value) / (filename if filename else "original.csv")
         elif self == DatasetNames.DMV_DATA:
@@ -50,8 +52,10 @@ class DatasetNames(str, Enum):
         elif self == DatasetNames.CENSUS_DATA:
             dp = get_data_path(self.value) / (filename if filename else "census.csv")
         elif self.is_tpch_type():
+            default_filename = "original_preprocessed.parquet" if pp_enb else "original.parquet"
+            logger.info(f"Using {default_filename} for {self}")
             dp = get_data_path(self.value) / (
-                filename if filename else "original_preprocessed.parquet"
+                filename if filename else default_filename
             )
         elif self.is_correlated_type():
             dp = get_data_path(self.value) / (
@@ -64,7 +68,14 @@ class DatasetNames(str, Enum):
 
         return dp
 
-    def get_non_continuous_columns(self):
+
+    def get_descrete_columns(self):
+        if self.is_tpch_type():
+            return []
+        else:
+            return []
+
+    def get_categorical_columns(self):
         if self == DatasetNames.FOREST_DATA:
             return []
         elif self == DatasetNames.POWER_DATA:
@@ -99,6 +110,9 @@ class DatasetNames(str, Enum):
                 "l_linestatus",
                 "l_shipinstruct",
                 "l_shipmode",
+                "l_receiptdate",
+                "l_commitdate",
+                "l_shipdate",
             ]
         else:
             raise ValueError(f"Dataset {self} not supported")

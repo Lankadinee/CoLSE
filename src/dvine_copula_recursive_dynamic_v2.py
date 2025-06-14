@@ -27,6 +27,7 @@ current_dir = Path(__file__).resolve().parent
 iso_time_str = datetime.now().isoformat()
 iso_time_str = iso_time_str.replace(":", "-")
 logs_dir = get_log_path()
+pp_enb = False
 logger.add(
     logs_dir.joinpath(f"training-{iso_time_str}.log"),
     rotation="1 MB",
@@ -42,7 +43,7 @@ def parse_args():
         "--data_split", type=str, default="train", help="Path to the testing Excel file"
     )
     parser.add_argument(
-        "--dataset_name", type=str, default="dmv", help="Name of the dataset"
+        "--dataset_name", type=str, default="tpch_sf2_z4_lineitem", help="Name of the dataset"
     )
     parser.add_argument(
         "--max_unique_values",
@@ -83,7 +84,7 @@ def main():
     NO_OF_COLUMNS = len(COLUMN_INDEXES)
 
     # pre process dataset
-    preprocess_dataset(dataset_type, skip_if_exists=True)
+    preprocess_dataset(dataset_type, skip_if_exists=True, pp_enb=pp_enb)
     
     error_comp_model = None
     error_comp_model_path = None
@@ -114,7 +115,7 @@ def main():
         output_file_name = f"{DataPathDir.DATA_UPDATES}/dequantized_v2_{parsed_args.update_type}.parquet"
         query_file_name = f"{DataPathDir.DATA_UPDATES}/query_{parsed_args.update_type}.json"
     else:
-        original_file_name = dataset_type.get_file_path()
+        original_file_name = dataset_type.get_file_path(pp_enb=pp_enb)
         output_file_name = "dequantized_v2.parquet"
         if parsed_args.workload_updates:
             query_file_name = f"{DataPathDir.WORKLOAD_UPDATES}/query_{parsed_args.workload_updates}.json"
@@ -225,7 +226,6 @@ def main():
         # print(query)
         original_cdf_list = s_dequantize.get_converted_cdf(query, COLUMN_INDEXES)
         
-
         time_taken_predict_cdf = time.time() - start_time_predict_cdf
         # time_taken_cdf = time.time() - start_time_cdf
         # Reshape the array into pairs

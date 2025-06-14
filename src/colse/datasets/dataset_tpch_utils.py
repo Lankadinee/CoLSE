@@ -11,6 +11,7 @@ from colse.dataset_names import DatasetNames
 from colse.datasets.params import ROW_PREFIX
 from colse.df_utils import load_dataframe, save_dataframe
 
+dataset_type_z4 = DatasetNames.TPCH_SF2_Z4_LINEITEM
 
 def tpch_lineitem_preprocess(dataset_type: DatasetNames, skip_if_exists: bool = False):
 
@@ -160,11 +161,7 @@ def get_queries_tpch_lineitem(
                 lb_list.append(query[key][1])
                 ub_list.append(np.inf)
             elif isinstance(query[key], list) and query[key][0] == "=":
-                if (
-                    key == "l_shipdate"
-                    or key == "l_commitdate"
-                    or key == "l_receiptdate"
-                ):
+                if key in dataset_type_z4.get_descrete_columns():
                     no_of_days = (
                         datetime.strptime(query[key][1], "%Y-%m-%d")
                         - datetime.strptime(MIN_DATE, "%Y-%m-%d")
