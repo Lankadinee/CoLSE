@@ -1,0 +1,10 @@
+create index idx_elevation on forest using btree(Elevation);
+create index idx_aspect on forest using btree(Aspect);
+create index idx_slope on forest using btree(Slope);
+create index idx_horizontal_distance_to_hydrology on forest using btree(Horizontal_Distance_To_Hydrology);
+create index idx_vertical_distance_to_hydrology on forest using btree(Vertical_Distance_To_Hydrology);
+create index idx_horizontal_distance_to_roadways on forest using btree(Horizontal_Distance_To_Roadways);
+create index idx_hillshade_9am on forest using btree(Hillshade_9am);
+create index idx_hillshade_noon on forest using btree(Hillshade_Noon);
+create index idx_hillshade_3pm on forest using btree(Hillshade_3pm);
+create index idx_horizontal_distance_to_fire_points on forest using btree(Horizontal_Distance_To_Fire_Points);
