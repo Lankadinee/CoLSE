@@ -2,9 +2,9 @@ from colse.df_utils import save_dataframe
 from colse.df_utils import load_dataframe
 
 
-csv_file_name = "/datadrive500/CoLSE/data/tpch_sf2_z4_lineitem/dequantized_v2.csv"
-parquet_file_name = "/datadrive500/CoLSE/data/tpch_sf2_z4_lineitem/dequantized_v2.parquet"
-no_of_rows = 10000
+csv_file_name = "/datadrive500/CoLSE/data/dmv/dmv.csv"
+parquet_file_name = "/datadrive500/CoLSE/data/dmv/dmv.parquet"
+no_of_rows = None
 
 def csv_2_parquet():
     df = load_dataframe(csv_file_name)
@@ -19,4 +19,4 @@ def parquet_2_csv():
     save_dataframe(df, csv_file_name)
 
 if __name__ == "__main__":
-    parquet_2_csv()
+    csv_2_parquet()
