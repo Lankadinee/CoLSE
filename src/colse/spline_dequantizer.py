@@ -358,7 +358,9 @@ class SplineDequantizer:
             mapping = _metadata["mapping"]
             code = mapping[original_value] if original_value in mapping else mapping[str(original_value)]
         except KeyError:
-            raise ValueError(f"Value {original_value} not found in mapping for column {mapping.keys()}")
+            logger.warning(f"Value {original_value} not found in {col_name} mapping for column {mapping.keys()}")
+            return 0
+            # raise ValueError(f"Value {original_value} not found in mapping for column {mapping.keys()}")
         
         if ub:
             return _metadata["cdf_vals"][code]
@@ -384,12 +386,16 @@ class SplineDequantizer:
         return np.clip(np.array(cdf_values), 0, 1)
 
     def get_mapped_query(self, query, column_indexes):
-        """Convert categorical columns in a query into their mapped values"""
+        """
+        Convert the query into a mapped query.
+        Use each column's mapping to convert the query into a mapped query.
+        """
         mapped_query = []
         categorical_columns = self._dequantizers[DequantizerType.CATEGORICAL].keys()
         for idx, value in enumerate(query[0]):
             col_name = self._metadata.df_cols[column_indexes[idx // 2]]
             if col_name in categorical_columns:
+                # This is a categorical column
                 _metadata = self._dequantizers[DequantizerType.CATEGORICAL][col_name]
                 if value == np.str_("-inf"):
                     mapped_query.append(
@@ -404,9 +410,19 @@ class SplineDequantizer:
                         )
                     )
                 else:
-                    mapped_query.append(
-                        _metadata["mapping"][value]
-                    )
+                    try:
+                        mapped_query.append(
+                            _metadata["mapping"][value]
+                        )
+                    except KeyError:
+                        logger.warning(f"Value {value} not found in {col_name} mapping for column {_metadata['mapping'].keys()}")
+                        code_len = len(_metadata["mapping"])
+                        mapped_query.append(code_len)
+                        # raise ValueError(f"Value {value} not found in {col_name} mapping for column {_metadata['mapping'].keys()}")
             else:
                 mapped_query.append(np.float64(value))
-        return np.array(mapped_query)
+        mq = np.array(mapped_query)
+        # if not mq:
+        #     logger.warning(f"Mapped query is empty for query: {query}")
+        #     raise ValueError(f"Mapped query is empty for query: {query}")
+        return mq

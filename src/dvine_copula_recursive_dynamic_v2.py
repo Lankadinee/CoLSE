@@ -223,21 +223,31 @@ def main():
         # start_time_cdf = time.time()
         start_time_predict_cdf = time.time()
         # print(query)
-        cdf_list = s_dequantize.get_converted_cdf(query, COLUMN_INDEXES)
+        original_cdf_list = s_dequantize.get_converted_cdf(query, COLUMN_INDEXES)
+        
+
         time_taken_predict_cdf = time.time() - start_time_predict_cdf
         # time_taken_cdf = time.time() - start_time_cdf
         # Reshape the array into pairs
-        reshaped_cdf_list = cdf_list.reshape(-1, 2)
+        reshaped_cdf_list = original_cdf_list.reshape(-1, 2)
         # Identifying the indexes where the first value is not equal to 0 and the second value is not equal to 1
         non_zero_non_one_indices = np.where(
             (reshaped_cdf_list[:, 0] != 0) | (reshaped_cdf_list[:, 1] != 1)
         )[0]
+        
+
         col_indices = [i + 1 for i in non_zero_non_one_indices]
         cdf_list = reshaped_cdf_list[non_zero_non_one_indices].reshape(-1)
+        query_modified = query.reshape(-1,2)[non_zero_non_one_indices]
+
+        # logger.info(f"Query [{query.shape}]: {query}")
+        # logger.info(f"Original CDF [{original_cdf_list.shape}]: {original_cdf_list}")
+        # logger.info(f"Query Modified [{query_modified.shape}]: {query_modified}")
+        # logger.info(f"CDF [{cdf_list.shape}]: {cdf_list}")
+
         no_of_cols_for_this_query = len(col_indices)
         loop.set_description(f"#cols: {no_of_cols_for_this_query:2d}")
         y_bar = None
-
         start_time = time.time()
         y_bar = (
             model.predict(cdf_list, column_list=col_indices) if y_bar is None else y_bar
@@ -254,12 +264,21 @@ def main():
             continue
         q_error = qerror(y_bar, y_act, no_of_rows=no_of_rows)
         mapped_query = s_dequantize.get_mapped_query(query, COLUMN_INDEXES)
+        # logger.info(f"Prediction: {y_bar} Mapped query: {mapped_query}")
+        if not any(mapped_query):
+            logger.warning(f"Mapped query is empty for query: {query}")
+            raise ValueError(f"Mapped query is empty for query: {query}")
 
         if error_comp_model:
-            y_bar_2 = error_comp_model.inference(
-                query=mapped_query, cdf=cdf_list, y_bar=y_bar
-            )[0]
-            q_error_2 = qerror(y_bar_2, y_act, no_of_rows=None)
+            if y_bar == 0:
+                y_bar_2 = 0
+                q_error_2 = q_error
+                # logger.warning(f"y_bar is 0 actual[{y_act}] Error:{q_error} for query: {query_modified},\n CDF: {cdf_list}\n Mapped query: {mapped_query}\n skipping error compensation")
+            else:
+                y_bar_2 = error_comp_model.inference(
+                    query=mapped_query, cdf=cdf_list, y_bar=y_bar
+                )[0]
+                q_error_2 = qerror(y_bar_2, y_act, no_of_rows=None)
         else:
             q_error_2 = None
             y_bar_2 = None

@@ -55,33 +55,40 @@ class ErrorCompensationNetwork:
         return mb
 
     def pre_process(self, query, cdf, y_bar):
-        # Vectorized normalization - much faster than list comprehension
-        q_np = (
-            query.flatten() if hasattr(query, "flatten") else np.array(query).flatten()
-        )
-        # Create index array for min/max values (each pair uses same index)
-        # logger.debug(f"q_np: {q_np}")
-        # logger.debug(f"self.min_values_double: {self.min_values_double}")
-        # logger.debug(f"self.diff_double: {self.diff_double}")
-        norm_q = (q_np - self.min_values_double) / self.diff_double
+        try:
+            # Vectorized normalization - much faster than list comprehension
+            q_np = (
+                query.flatten() if hasattr(query, "flatten") else np.array(query).flatten()
+            )
+            # Create index array for min/max values (each pair uses same index)
+            # logger.debug(f"q_np: {q_np}")
+            # logger.debug(f"self.min_values_double: {self.min_values_double}")
+            # logger.debug(f"self.diff_double: {self.diff_double}")
+            norm_q = (q_np - self.min_values_double) / self.diff_double
 
-        # norm_q = (query - self.min_values) / self.diff
-        norm_q[norm_q == -np.inf] = 0
-        norm_q[norm_q == np.inf] = 1
+            # norm_q = (query - self.min_values) / self.diff
+            norm_q[norm_q == -np.inf] = 0
+            norm_q[norm_q == np.inf] = 1
 
-        # Log AVI estimate
-        avi_card = multiply_pairs_norm(cdf) * self.no_of_rows
-        avi_card_log = encode_label(avi_card)
+            # Log AVI estimate
+            avi_card = multiply_pairs_norm(cdf) * self.no_of_rows
+            avi_card_log = encode_label(avi_card)
 
-        # Log y_bar
-        y_bar_ranged = np.clip(y_bar, 0, 1)
-        y_bar_log = encode_label(y_bar_ranged * self.no_of_rows)
+            # Log y_bar
+            y_bar_ranged = np.clip(y_bar, 0, 1)
+            y_bar_log = encode_label(y_bar_ranged * self.no_of_rows)
 
-        # Concatenate normalized query, AVI, and y_bar for model input
-        x = np.concatenate([norm_q.flatten(), [avi_card_log], [y_bar_log]])
+            # Concatenate normalized query, AVI, and y_bar for model input
+            x = np.concatenate([norm_q.flatten(), [avi_card_log], [y_bar_log]])
 
-        # return torch.tensor(x, dtype=torch.float32).to(DEVICE)
-        return torch.tensor(x, dtype=torch.float32).to(DEVICE)
+            # return torch.tensor(x, dtype=torch.float32).to(DEVICE)
+            return torch.tensor(x, dtype=torch.float32).to(DEVICE)
+        except Exception as e:
+            logger.error(f"query: {query}")
+            logger.error(f"cdf: {cdf}")
+            logger.error(f"y_bar: {y_bar}")
+            logger.error(f"Error in pre_process: {e}")
+            raise e
 
     def post_process(self, y_pred, y_bar):
         # 1. Get absolute prediction (third output)
