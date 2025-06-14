@@ -33,16 +33,18 @@ stop_all_containers:
 	echo "Stopping all containers"
 	docker stop $(shell docker ps -a -q) || true
 
+# Run this command to build the docker image
 docker:
 	@tar cvf postgres-13.1.tar.gz postgresql-13.1
 	@mv postgres-13.1.tar.gz dockerfile/
-	@cd dockerfile && docker build -t $(IMAGE_NAME) --network=host .
+	@sleep 1
+	@cd dockerfile && docker build -t $(IMAGE_NAME) .
 	@rm -rf postgres-13.1.tar.gz
 
 docker_run:
 	echo "Starting docker"
 	docker rm -f $(CONTAINER_NAME) || true
-	docker run --name $(CONTAINER_NAME) -p 5431:5432 -d $(IMAGE_NAME)
+	docker run --name $(CONTAINER_NAME) -p 5430:5432 -d $(IMAGE_NAME)
 
 	# docker run -v $(shell pwd)/single_table_datasets/${DATABASE_NAME}:/tmp/single_table_datasets/${DATABASE_NAME}:ro -v $(shell pwd)/scripts:/tmp/scripts:ro --name $(CONTAINER_NAME) -p 5431:5432 -d $(IMAGE_NAME)
 	echo "Docker is running"
@@ -58,6 +60,7 @@ copy_estimations:
 	docker exec $(CONTAINER_NAME) mkdir -p /tmp/single_table_datasets; \
 	docker cp $$(pwd)/single_table_datasets/$$COMMON_NAME/ $(CONTAINER_NAME):/tmp/single_table_datasets/$(COMMON_NAME); \
 	docker cp $$(pwd)/scripts $(CONTAINER_NAME):/tmp/scripts
+	docker cp $$(pwd)/scripts/sql/ $(CONTAINER_NAME):/tmp/scripts/sql/
 
 set_docker_permissions:
 	@docker exec --user root $(CONTAINER_NAME) chown -R postgres:postgres /var/lib/pgsql/13.1/data/
@@ -72,16 +75,17 @@ create_db:
 	@sleep 2
 	@COMMON_NAME=$$(bash scripts/sh/get_common_name.sh $(DATABASE_NAME)); \
 	./scripts/sh/attach_and_run.sh $(DATABASE_NAME) $(CONTAINER_NAME) $$COMMON_NAME
-	# Attach to the container and run commands
-	# docker exec --user postgres  $(CONTAINER_NAME) bash -c "psql -d template1 -h localhost -U postgres -f /tmp/commands.sql"
 
+# Run this command to initialize the database
 init: execute_permission stop_all_containers docker_run copy_estimations set_docker_permissions create_db  
 
 test_one_file:
 	uv run scripts/py/send_query.py --database_name $(DATABASE_NAME) --container_name $(CONTAINER_NAME) --filename $(TEST_FILENAME) 2>&1 | tee -a $(DATABASE_NAME)_test.log
 
+# Run this command to test one file
 test_one: stop_all_containers start_container create_venv test_one_file 
 
+# Run this command to calculate the p-error
 p_error:
 	uv run scripts/py/p_error_calculation.py --database_name $(DATABASE_NAME)
 	mkdir -p scripts/plan_cost/$(DATABASE_NAME)/results

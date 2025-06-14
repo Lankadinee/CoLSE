@@ -11,6 +11,8 @@ from get_list_of_files import get_all_unprocessed_txt_files
 from loguru import logger
 from tqdm import tqdm
 
+from colse_enums import Datasets
+
 RUN_ESTIMATES = True
 RETRY_CONNECTION_WHEN_FAILED = False
 
@@ -140,11 +142,11 @@ def count_queried_columns(sql):
     return len(unique_columns), unique_columns
     
 def create_connection(database_name, cardest_filename=False, query_no=0):
-    print(f"Connecting to {database_name}...")
+    logger.info(f"Connecting to {database_name}...")
     conn = psycopg2.connect(
         database=database_name,
         host="localhost",
-        port=5431,
+        port=5430,
         password="postgres",
         user="postgres",
     )
@@ -152,13 +154,13 @@ def create_connection(database_name, cardest_filename=False, query_no=0):
     cursor = conn.cursor()
 
     if cardest_filename:
-        print(f"Using {cardest_filename} for estimates. Setting up the config...")
+        logger.info(f"Using {cardest_filename} for estimates. Setting up the config...")
         # cursor.execute("SET debug_card_est=true;")
-        # cursor.execute("SET print_sub_queries=true;")
+        # cursor.execute("SET logger.info_sub_queries=true;")
 
         if RUN_ESTIMATES:
             # Single table queries
-            # cursor.execute('SET print_single_tbl_queries=true')
+            # cursor.execute('SET logger.info_single_tbl_queries=true')
             cursor.execute("SET ml_cardest_enabled=true;")
             cursor.execute(f"SET ml_cardest_fname='{cardest_filename}';")
             cursor.execute(f"SET query_no={query_no};")
@@ -174,21 +176,21 @@ def main(dataset, container_name):
         run_one_file(dataset, cardest_filename)
 
 
-def run_one_file(dataset, cardest_filename):
-    database_name = METADATA[dataset]["database_name"]
-    sql_file = METADATA[dataset]["sql_file"]
+def run_one_file(dataset: Datasets, cardest_filename: str):
+    database_name = dataset.value
+    sql_file = dataset.get_sql_file_path()
 
     conn, cursor = create_connection(database_name)
-    print(f"Processing {cardest_filename}")
+    logger.info(f"Processing {cardest_filename}")
 
     export_dirpath = current_dir / f"../plan_cost/{database_name}/"
     export_filepath = export_dirpath / f'{cardest_filename.split(".")[0] + "_cost.csv"}'
-    print(f"Exporting to {export_filepath}")
+    logger.info(f"Exporting to {export_filepath}")
     if not export_dirpath.exists():
         export_dirpath.mkdir(parents=True)
 
     if export_filepath.exists():
-        print(f"File {export_filepath} already exists. Deleting...")
+        logger.info(f"File {export_filepath} already exists. Deleting...")
         export_filepath.unlink()
 
         # imdb_sql_file = open("/home/titan/phd/megadrive/End-to-End-CardEst-Benchmark/workloads/stats_CEB/sub_plan_queries/stats_CEB_single_table_sub_query.sql")
@@ -208,12 +210,12 @@ def run_one_file(dataset, cardest_filename):
         stats=# SET ml_joinest_fname='stats_CEB_sub_queries_bayescard.txt'; ## for multi-table
         """
     # cursor.execute("SET debug_card_est=true;")
-    # cursor.execute("SET print_sub_queries=true;")
+    # cursor.execute("SET logger.info_sub_queries=true;")
 
     if RUN_ESTIMATES:
-        print("Using estimates from ", cardest_filename)
+        logger.info("Using estimates from ", cardest_filename)
         # Single table queries
-        # cursor.execute('SET print_single_tbl_queries=true')
+        # cursor.execute('SET logger.info_single_tbl_queries=true')
         # cursor.execute("SET enable_indexscan=on;")
         cursor.execute("SET ml_cardest_enabled=true;")
         cursor.execute(f"SET ml_cardest_fname='{cardest_filename}';")
@@ -235,12 +237,12 @@ def run_one_file(dataset, cardest_filename):
     )
     for no, query in loop:
         scan_type = []
-        # sql_txt = "EXPLAIN (FORMAT JSON)SELECT COUNT(*) FROM users as u WHERE u.UpVotes>=0;"
+        # sql_txt = "EXPLAIN (FORMAT JSON)SELECT COUNT(*) FROM forest;"
         # EXPLAIN (FORMAT JSON)SELECT COUNT(*) FROM badges as b, users as u WHERE b.UserId= u.Id AND u.UpVotes>=0;
         sql_txt = "EXPLAIN (FORMAT JSON) " + query.split("\n")[0]
         # cursor.execute(sql_txt)
         # res = cursor.fetchall()
-        # print(f"Executing {no}-th query: {sql_txt}")
+        logger.info(f"Executing {no}-th query: {sql_txt}")
         retry_count = 0
         while True:
             try:
@@ -256,17 +258,18 @@ def run_one_file(dataset, cardest_filename):
                 res = cursor.fetchall()
                 break
             except (psycopg2.OperationalError, psycopg2.InterfaceError) as e:
-                print(e)
+                logger.info(e)
                 logger.error("Connection error")
                 cursor.close()
                 conn.close()
                 retry_count += 1
                 if retry_count > 5 or not RETRY_CONNECTION_WHEN_FAILED:
-                    print("Failed to execute the query.")
+                    logger.info("Failed to execute the query.")
                     break
-                print("Retrying... ", retry_count)
+                logger.info("Retrying... ", retry_count)
                 time.sleep(3)
                 continue
+        logger.info(res)
         res_json = res[0][0][0]
         total_cost = res_json["Plan"]["Total Cost"]
         # query_total_time = res_json["Execution Time"] + res_json["Planning Time"]
@@ -296,7 +299,7 @@ def run_one_file(dataset, cardest_filename):
                  "access_path": scan_type}
             )
 
-    print("Used estimates from ", cardest_filename)
+    logger.info("Used estimates from ", cardest_filename)
     df = pd.DataFrame(dict_list)
 
     if export_filepath.exists():
@@ -310,16 +313,16 @@ def run_one_file(dataset, cardest_filename):
     conn.close()
 
     # Show stats
-    print("Total number of queries: ", len(queries))
-    print("Total number of queries processed: ", len(df))
+    logger.info("Total number of queries: ", len(queries))
+    logger.info("Total number of queries processed: ", len(df))
 
 
     # Show unique access paths
     unique_access_paths_counts = df["access_path"].value_counts()
 
-    print("Table Scan type\tCount")
+    logger.info("Table Scan type\tCount")
     for path, count in unique_access_paths_counts.items():
-        print(f"{path}\t: {count}")
+        logger.info(f"{path}\t: {count}")
 
 def test():
     # Test the function with a sample dataset
@@ -329,7 +332,7 @@ def test():
 
 
 if __name__ == "__main__":
-    print("Starting the process...")
+    logger.info("Starting the process...")
     # test()
     parser = argparse.ArgumentParser(
         description="Execute SQL queries and export cost estimates."
@@ -345,8 +348,8 @@ if __name__ == "__main__":
     parser.add_argument("--filename", default="NA", help="Cardest filename")
 
     args = parser.parse_args()
-
+    dataset = Datasets(args.database_name)
     if args.filename == "NA":
-        main(args.database_name, args.container_name)
+        main(dataset, args.container_name)
     else:
-        run_one_file(args.database_name, args.filename)
+        run_one_file(dataset, args.filename)
