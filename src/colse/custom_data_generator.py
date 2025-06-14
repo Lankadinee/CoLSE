@@ -336,13 +336,13 @@ class CustomDataGen:
                 self.sample_query_col_list = list(range(self.no_of_features))
                 no_inf = True
 
-            self.query_l, self.query_r = QUERY_GENERATE_MAPPER_CUSTOM[
-                self.dataset_type
-            ](
-                no_of_queries=self.no_of_queries,
-                queried_columns=self.sample_query_col_list,
-                no_inf=no_inf,
-            )
+            # self.query_l, self.query_r = QUERY_GENERATE_MAPPER_CUSTOM[
+            #     self.dataset_type
+            # ](
+            #     no_of_queries=self.no_of_queries,
+            #     queried_columns=self.sample_query_col_list,
+            #     no_inf=no_inf,
+            # )
             self.true_card = self._get_actual_cardinality()
             return self.query_l.shape[0]
         else:

@@ -82,6 +82,7 @@ class DataConversion:
             (self.max_values[i] - self.min_values[i])
             for i in range(len(self.max_values))
         ]
+        diff[diff == 0] = 1
 
         normalized_query = []
         for q in tqdm(query):

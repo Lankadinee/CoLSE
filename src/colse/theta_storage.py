@@ -39,7 +39,7 @@ class ThetaStorage:
     def get_theta(self, data_np, cache_name=None):
         if cache_name is not None and os.path.exists(cache_name):
             logger.info(f"Loading theta from cache: {cache_name}")
-            theta_dict = pickle_load(f)
+            theta_dict = pickle_load(cache_name)
             self.show_theta_table(theta_dict)
             return theta_dict
         
@@ -71,7 +71,7 @@ class ThetaStorage:
                     row.append("N/A")
                 else:
                     theta_value = theta_dict.get((i, j), theta_dict.get((j, i), "N/A"))
-                    row.append(f"{theta_value:.4f}" if isinstance(theta_value, float) else theta_value)
+                    row.append(f"{theta_value:.4f}")
             table_theta.add_row(*row)
         console = Console()
         console.print(table_theta)

@@ -347,12 +347,19 @@ class SplineDequantizer:
         """
         Given a query and a column index, return the cumulative frequency at that value.
         """
+        
         if original_value in [-np.inf, np.str_("-inf")]:
             return 0
         if original_value in [np.inf, np.str_("inf")]:
             return 1
+        
         _metadata = self._dequantizers[DequantizerType.CATEGORICAL][col_name]
-        code = _metadata["mapping"][original_value]
+        try:
+            mapping = _metadata["mapping"]
+            code = mapping[original_value] if original_value in mapping else mapping[str(original_value)]
+        except KeyError:
+            raise ValueError(f"Value {original_value} not found in mapping for column {mapping.keys()}")
+        
         if ub:
             return _metadata["cdf_vals"][code]
         else:
@@ -374,7 +381,7 @@ class SplineDequantizer:
             else:
                 cdf_values.append(self.get_cdf_values(col_name, value))
 
-        return np.array(cdf_values)
+        return np.clip(np.array(cdf_values), 0, 1)
 
     def get_mapped_query(self, query, column_indexes):
         """Convert categorical columns in a query into their mapped values"""

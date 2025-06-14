@@ -57,6 +57,9 @@ def parse_args():
         "--update_type", type=str, default=None, help="Type of update to the dataset"
     )
     parser.add_argument(
+        "--workload_updates", type=str, default=None, help="Name of the workload updates"
+    )
+    parser.add_argument(
         "--output_excel_name", type=str, default=None, help="Name of the output excel file"
     )
     parser.add_argument(
@@ -113,7 +116,10 @@ def main():
     else:
         original_file_name = dataset_type.get_file_path()
         output_file_name = "dequantized_v2.parquet"
-        query_file_name = None
+        if parsed_args.workload_updates:
+            query_file_name = f"{DataPathDir.WORKLOAD_UPDATES}/query_{parsed_args.workload_updates}.json"
+        else:
+            query_file_name = None
 
     s_dequantize = SplineDequantizer(
         dataset_type=dataset_type,
