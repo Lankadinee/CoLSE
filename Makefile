@@ -2,12 +2,10 @@
 replace_file replace all copy_estimations create_db start_container test_one_file test_experiment test_census analyze_one_file
 
 IMAGE_NAME=ceb
-DATABASE_NAME=forest
+DATABASE_NAME=forest_ind_0.2
 CONTAINER_NAME=ce-benchmark-$(IMAGE_NAME)-$(DATABASE_NAME)
-TEST_FILENAME=forest_true_card.csv
+TEST_FILENAME=true_card.csv
 base_name := $(basename $(TEST_FILENAME))
-ESTIMATES_COST_FILE_PATH := "scripts/plan_cost/$(DATABASE_NAME)/$(base_name)_cost.csv"
-TRUE_COST_FILE_PATH="scripts/plan_cost/$(DATABASE_NAME)/$(DATABASE_NAME)_true_card_cost.csv"
 
 execute_permission:
 	@chmod u+x *.sh
@@ -80,7 +78,7 @@ remove_header:
 	uv run scripts/py/remove_header.py --source_dir workloads/$(DATABASE_NAME)/estimates
 
 # Run this command to initialize the database
-init: execute_permission stop_all_containers docker_run copy_estimations set_docker_permissions create_db  
+init: execute_permission stop_all_containers docker_run remove_header create_db  
 
 test_one_file:
 	uv run scripts/py/send_query.py --database_name $(DATABASE_NAME) --container_name $(CONTAINER_NAME) --filename $(TEST_FILENAME) 2>&1 | tee -a $(DATABASE_NAME)_test.log
@@ -89,9 +87,9 @@ test_all_files:
 	uv run scripts/py/send_query.py --database_name $(DATABASE_NAME) --container_name $(CONTAINER_NAME) 2>&1 | tee -a $(DATABASE_NAME)_test_all.log
 
 # Run this command to test one file
-test_one: stop_all_containers start_container create_venv remove_header test_one_file 
+test_one: stop_all_containers start_container create_venv test_one_file 
 
-test_all: stop_all_containers start_container create_venv remove_header test_all_files
+test_all: stop_all_containers start_container create_venv test_all_files
 
 # Run this command to calculate the p-error
 p_error:

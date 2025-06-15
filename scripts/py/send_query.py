@@ -64,11 +64,12 @@ def main(dataset: str, container_name):
 
 def run_one_file(database_name: str, cardest_filename: str):
     logger.info("------------------------------------------------------")
-    logger.info(f"Running {cardest_filename} for {database_name}")
     database_common_name = get_common_database_name(database_name)
-    sql_file =  f"./workloads/{database_name}/{database_name}.sql"
+    database_split_name = database_name.split("_")[0]
+    logger.info(f"Running {cardest_filename} for database {database_name} with common name {database_common_name}")
+    sql_file =  f"./workloads/{database_name}/{database_common_name}.sql"
 
-    conn, cursor = create_connection(database_common_name)
+    conn, cursor = create_connection(database_split_name)
 
     export_dirpath = current_dir / f"../plan_cost/{database_name}/"
     export_filepath = export_dirpath / f'{cardest_filename.split(".")[0] + "_cost.xlsx"}'

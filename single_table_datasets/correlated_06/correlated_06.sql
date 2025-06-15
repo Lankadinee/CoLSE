@@ -1,4 +1,4 @@
-CREATE TABLE correlated_06 (
+CREATE TABLE correlated (
     col_1  DOUBLE PRECISION,
     col_2  DOUBLE PRECISION,
     col_3  DOUBLE PRECISION,

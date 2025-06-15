@@ -1,4 +1,4 @@
-CREATE TABLE tpch_20 (
+CREATE TABLE tpch (
     l_orderkey  BIGINT,
     l_partkey  BIGINT,
     l_suppkey  BIGINT,

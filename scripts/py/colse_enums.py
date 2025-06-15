@@ -15,8 +15,26 @@ def get_common_database_name(dataset_name):
         return "dmv"
     elif "tpch" in dataset_name:
         return "tpch"
-    elif "correlated" in dataset_name:
-        return "correlated"
+    elif "correlated_02" in dataset_name:
+        return "correlated_02"
+    elif "correlated_04" in dataset_name:
+        return "correlated_04"
+    elif "correlated_06" in dataset_name:
+        return "correlated_06"
+    elif "correlated_08" in dataset_name:
+        return "correlated_08"
+    elif "tpch_lineitem_10" in dataset_name:
+        return "tpch_lineitem_10"
+    elif "tpch_lineitem_20" in dataset_name:
+        return "tpch_lineitem_20"
+    elif "tpch_sf2_z1_lineitem" in dataset_name:
+        return "tpch_sf2_z1_lineitem"
+    elif "tpch_sf2_z2_lineitem" in dataset_name:
+        return "tpch_sf2_z2_lineitem"
+    elif "tpch_sf2_z3_lineitem" in dataset_name:
+        return "tpch_sf2_z3_lineitem"
+    elif "tpch_sf2_z4_lineitem" in dataset_name:
+        return "tpch_sf2_z4_lineitem"
     else:
         raise ValueError(f"Invalid dataset name: {dataset_name}")
 
