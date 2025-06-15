@@ -71,12 +71,10 @@ class SplineDequantizer:
             path = None
 
         self._already_loaded = False
-        if path: 
-            if path.exists():
-                self.load_from_pickle(path)
-                self._already_loaded = True
-            else:
-                logger.warning(f"Dequantizer cache not found at {path}")
+        if path and path.exists():
+            self.load_from_pickle(path)
+            self._already_loaded = True
+            logger.warning(f"Dequantizer cache found and loaded from:{path}")
 
         self._cache_path = path
 
@@ -399,27 +397,35 @@ class SplineDequantizer:
         Use each column's mapping to convert the query into a mapped query.
         """
         mapped_query = []
+        _metadata = None
         categorical_columns = self._dataset_type.get_non_continuous_columns()
-        for idx, value in enumerate(query[0]):
-            col_name = self._metadata.df_cols[column_indexes[idx]]
-            if col_name in categorical_columns:
-                _metadata = self._dequantizers[DequantizerType.CATEGORICAL][col_name]
-                if value == np.str_("-inf"):
-                    mapped_query.append(
-                        min(
-                            _metadata["mapping"].values()
+        try:
+            for idx, value in enumerate(query[0]):
+                col_name = self._metadata.df_cols[column_indexes[idx//2]]
+                if col_name in categorical_columns:
+                    _metadata = self._dequantizers[DequantizerType.CATEGORICAL][col_name]
+                    if value == np.str_("-inf"):
+                        mapped_query.append(
+                            min(
+                                _metadata["mapping"].values()
+                            )
                         )
-                    )
-                elif value == np.str_("inf"):
-                    mapped_query.append(
-                        max(
-                            _metadata["mapping"].values()
+                    elif value == np.str_("inf"):
+                        mapped_query.append(
+                            max(
+                                _metadata["mapping"].values()
+                            )
                         )
-                    )
+                    else:
+                        mapped_query.append(
+                            _metadata["mapping"][value]
+                        )
                 else:
-                    mapped_query.append(
-                        _metadata["mapping"][value]
-                    )
-            else:
-                mapped_query.append(np.float64(value))
+                    mapped_query.append(np.float64(value))
+        except KeyError:
+            keys = _metadata["mapping"].keys() if _metadata else None
+            logger.info(f"Query: {query} Column Indexes: {column_indexes} Column Name: {col_name} All columns: {self._metadata.df_cols}")
+            logger.exception(f"Value {value} not found in {col_name} mapping for column {keys}")
+            raise ValueError(f"Value {value} not found in {col_name} mapping for column {keys}")
+        
         return np.array(mapped_query)

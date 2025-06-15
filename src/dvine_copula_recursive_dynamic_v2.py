@@ -33,7 +33,7 @@ logger.add(
     rotation="1 MB",
     level="DEBUG",
 )
-
+SHOW_DEBUG_INFO = False
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -72,8 +72,23 @@ def parse_args():
     return parser.parse_args()
 
 
+
+def show_args(parsed_args):
+    table = Table(title="Arguments to the script")
+    table.add_column("Argument", justify="left")
+    table.add_column("Value", justify="right")
+    for arg, value in parsed_args.__dict__.items():
+        table.add_row(arg, str(value))
+    table.add_row("-"*10, "-"*10)
+    table.add_row("Pre-processing", "True" if pp_enb else "False")
+    console = Console()
+    console.print(table)
+
+
+
 def main():
     parsed_args = parse_args()
+    show_args(parsed_args)
     data_split = parsed_args.data_split
     dataset_type = DatasetNames(parsed_args.dataset_name)
     logger.info(f"Dataset Type: {parsed_args.dataset_name} -> {dataset_type.name}")
@@ -238,7 +253,6 @@ def main():
 
         col_indices = [i + 1 for i in non_zero_non_one_indices]
         cdf_list = reshaped_cdf_list[non_zero_non_one_indices].reshape(-1)
-        query_modified = query.reshape(-1,2)[non_zero_non_one_indices]
 
         # logger.info(f"Query [{query.shape}]: {query}")
         # logger.info(f"Original CDF [{original_cdf_list.shape}]: {original_cdf_list}")
@@ -247,17 +261,13 @@ def main():
 
         no_of_cols_for_this_query = len(col_indices)
         loop.set_description(f"#cols: {no_of_cols_for_this_query:2d}")
-        y_bar = None
         start_time = time.time()
-        y_bar = (
-            model.predict(cdf_list, column_list=col_indices) if y_bar is None else y_bar
-        )
-        time_taken = time.time() - start_time
+        y_bar = model.predict(cdf_list, column_list=col_indices)
+        copula_pred_time = time.time() - start_time
 
-        time_taken_list.append(time_taken)
+        time_taken_list.append(copula_pred_time)
         time_taken_predict_cdf_list.append(time_taken_predict_cdf)
-        # if len(time_taken_list) == 1000:
-        #     break
+        
 
         if np.isnan(y_bar):  # or np.isnan(y_bar_2):
             nan_count += 1
@@ -283,6 +293,28 @@ def main():
             q_error_2 = None
             y_bar_2 = None
 
+        #####################################################
+        if SHOW_DEBUG_INFO:
+            query_modified = query.reshape(-1,2)[non_zero_non_one_indices]    
+            table = Table(title="Debug Info")
+            table.add_column("Item", justify="right")
+            table.add_column("Shape", justify="right")
+            table.add_column("Value", justify="right")
+
+            table.add_row("Query", f"{query.shape}", f"{query}")
+            table.add_row("Original CDF", f"{original_cdf_list.shape}", f"{original_cdf_list.round(3)}")
+            table.add_row("Modified Query", f"{query_modified.shape}", f"{query_modified}")
+            table.add_row("CDF", f"{cdf_list.shape}", f"{cdf_list}")
+            table.add_row("Mapped Query", f"{mapped_query.shape}", f"{mapped_query}")
+            table.add_row("Y Bar", f"{y_bar.shape}", f"{y_bar}")
+            table.add_row("Y Bar 2", f"{y_bar_2.shape if y_bar_2 is not None else 'None'}", f"{y_bar_2}")
+            table.add_row("Y", f"{y_act.shape if y_act is not None else 'None'}", f"{y_act}")
+            console = Console()
+
+            console.print(table)
+
+        #####################################################
+
         dict_list.append(
             {
                 "X": ",".join(list(map(str, cdf_list))),
@@ -294,7 +326,7 @@ def main():
                 "gt": y_act * no_of_rows,
                 "y_bar_card": max(y_bar * no_of_rows, 1),
                 "y_card": y_act * no_of_rows,
-                "time_taken": time_taken,
+                "time_taken": copula_pred_time,
                 "q_error": q_error,
                 "q_error_2": q_error_2,
                 "exec_count": model.exec_count,
