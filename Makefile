@@ -76,14 +76,22 @@ create_db:
 	@COMMON_NAME=$$(bash scripts/sh/get_common_name.sh $(DATABASE_NAME)); \
 	./scripts/sh/attach_and_run.sh $(DATABASE_NAME) $(CONTAINER_NAME) $$COMMON_NAME
 
+remove_header:
+	uv run scripts/py/remove_header.py --source_dir workloads/$(DATABASE_NAME)/estimates
+
 # Run this command to initialize the database
 init: execute_permission stop_all_containers docker_run copy_estimations set_docker_permissions create_db  
 
 test_one_file:
 	uv run scripts/py/send_query.py --database_name $(DATABASE_NAME) --container_name $(CONTAINER_NAME) --filename $(TEST_FILENAME) 2>&1 | tee -a $(DATABASE_NAME)_test.log
 
+test_all_files:
+	uv run scripts/py/send_query.py --database_name $(DATABASE_NAME) --container_name $(CONTAINER_NAME) 2>&1 | tee -a $(DATABASE_NAME)_test_all.log
+
 # Run this command to test one file
-test_one: stop_all_containers start_container create_venv test_one_file 
+test_one: stop_all_containers start_container create_venv remove_header test_one_file 
+
+test_all: stop_all_containers start_container create_venv remove_header test_all_files
 
 # Run this command to calculate the p-error
 p_error:
@@ -91,10 +99,14 @@ p_error:
 	mkdir -p scripts/plan_cost/$(DATABASE_NAME)/results
 	mv scripts/plan_cost/$(DATABASE_NAME)/*.txt scripts/plan_cost/$(DATABASE_NAME)/results/
 
-show_logs:
+plogs:
 	@docker exec $(CONTAINER_NAME) cat /var/lib/pgsql/13.1/data/custom_log_file.txt
 
-reset_logs:
+slogs:
+	@docker cp $(CONTAINER_NAME):/var/lib/pgsql/13.1/data/custom_log_file.txt $(CONTAINER_NAME).log
+	echo "Logs saved to $(CONTAINER_NAME).log"
+
+dlogs:
 	@docker exec $(CONTAINER_NAME) rm /var/lib/pgsql/13.1/data/custom_log_file.txt || true
 
 

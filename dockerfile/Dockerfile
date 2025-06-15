@@ -29,6 +29,7 @@ RUN cd /root/ \
     && tar xvf postgres-13.1.tar.gz  \
     && rm postgres-13.1.tar.gz \
     && cd postgresql-13.1 \
+    && chmod +x configure \
     && ./configure --prefix=/usr/local/pgsql/13.1 --enable-depend --enable-cassert --enable-debug CFLAGS="-ggdb -O0" \
     && make -j$(nproc) \
     && make install \

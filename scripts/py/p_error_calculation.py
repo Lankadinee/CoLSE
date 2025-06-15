@@ -1,13 +1,17 @@
 import argparse
 import json
 from pathlib import Path
+from loguru import logger
 import numpy as np
 import pandas as pd
 
 
-def calculate_p_error(estimates_cost_file_path, true_cost_file_path):
-    df_estimates = pd.read_csv(estimates_cost_file_path)
-    df_true = pd.read_csv(true_cost_file_path)
+def calculate_p_error(estimates_cost_file_path: str, true_cost_file_path: str):
+    estimates_cost_file_path = Path(estimates_cost_file_path)
+    true_cost_file_path = Path(true_cost_file_path)
+
+    df_estimates = pd.read_excel(estimates_cost_file_path.as_posix())
+    df_true = pd.read_excel(true_cost_file_path.as_posix())
     
     cost_estimates = df_estimates["total_cost_estimates"].values
     cost_true = df_true["total_cost_estimates"].values
@@ -42,22 +46,22 @@ def calculate_p_error(estimates_cost_file_path, true_cost_file_path):
     
     """Calculate the percentiles of p_error"""
     percentiles_values = [50, 90, 95, 99, 100]
-    
-    result_file_path = Path(estimates_cost_file_path).with_suffix(".txt")
-    with open(result_file_path, "a") as f:
-        f.write(f"Estimates cost file: {estimates_cost_file_path}\n")
-        f.write(f"True cost file: {true_cost_file_path}\n")
-        f.write(f"Total number of queries: {len(p_errors)}\n")
-        f.write(f"Total number of same access paths: {same_access_paths}\n")
-        # f.write(f"Total number of queries with high execution time: {sum(high_execution_time)}\n")
-        # f.write(f"Mean query execution time: {np.mean(query_execution_time_estimates)}\n")
-        # f.write(f"Mean query execution time for sub-optimal access paths: {mean_query_execution_time_for_sub_optimal_access_path}\n")
-        f.write(f"Percentiles of p_error\n")
-        for percentile in percentiles_values:
-            value = np.percentile(p_errors, percentile)
-            print(f"Percentile ({percentile}th): {value}")
-            f.write(f"{percentile}th percentile: {value}\n")
-        f.write("\n")
+    dict_result = {}
+    dict_result = {
+        "estimates_cost_file_path": estimates_cost_file_path.as_posix(),
+        "true_cost_file_path": true_cost_file_path.as_posix(),
+        "total_number_of_queries": len(p_errors),
+        "total_number_of_same_access_paths": same_access_paths,
+    }
+    for percentile in percentiles_values:
+        value = np.percentile(p_errors, percentile)
+        logger.info(f"Percentile ({percentile}th): {value}")
+        dict_result[f"p-{percentile}"] = value
+
+    result_file_path = Path(estimates_cost_file_path).parent / "results" / Path(estimates_cost_file_path).name.replace(".xlsx", ".json")
+    result_file_path.parent.mkdir(parents=True, exist_ok=True)
+    logger.info(f"Saving results to {result_file_path}")
+    json.dump(dict_result, open(result_file_path, "w"), indent=4)
 
         # "Calculate the percentiles of query execution times of sub optimal plans"
         # # sub_optimal_query_execution_time = query_execution_time_estimates[sub_optimal_access_path_id_list]
@@ -82,9 +86,9 @@ def calculate_p_error(estimates_cost_file_path, true_cost_file_path):
         #     txt = f"Percentile ({percentile}th) of query total time for sub-optimal access paths: {value}\n"
         #     total_time_txt += txt
 
-        # # print(exec_time_txt)
-        # # print(plan_time_txt)
-        # print(total_time_txt)
+        # # logger.info(exec_time_txt)
+        # # logger.info(plan_time_txt)
+        # logger.info(total_time_txt)
         # f.write(exec_time_txt)
         # f.write("\n")
         # f.write(plan_time_txt)
@@ -95,7 +99,7 @@ def calculate_p_error(estimates_cost_file_path, true_cost_file_path):
         # sub_optimal_query_planning_time = query_execution_time_true[sub_optimal_access_path_id_list]
         # for percentile in percentiles_values:
             
-        #     print(f"Percentile ({percentile}th) of query execution time for sub-optimal access paths: {value}")
+        #     logger.info(f"Percentile ({percentile}th) of query execution time for sub-optimal access paths: {value}")
         #     f.write(f"{percentile}th percentile of query execution time for sub-optimal access paths: {value}\n")
         # f.write("\n")
 
@@ -105,15 +109,17 @@ def calculate_p_error(estimates_cost_file_path, true_cost_file_path):
         # sorted_execution_times = [sub_optimal_query_execution_time[i] for i in sorted_indices]
 
         # Print the queries with their ids and execution times
-        # print("Sub-optimal queries sorted by execution time (descending):")
+        # logger.info("Sub-optimal queries sorted by execution time (descending):")
         # for query_id, execution_time in zip(sorted_ids[:10], sorted_execution_times[:10]):
-        #     # print(f"Query: {df_estimates['query'][query_id]}, Execution Time: {execution_time}")
+        #     # logger.info(f"Query: {df_estimates['query'][query_id]}, Execution Time: {execution_time}")
         #     f.write(f"Query: {df_estimates['query'][query_id]}, Execution Time: {execution_time}\n")
 
-    print(f"Same access paths: {(same_access_paths)}")
-    # print(f"High execution time: {sum(high_execution_time)}")
-    # print(f"Mean query execution time: {np.mean(query_execution_time_estimates)}")
-    print("========================================================================")
+    logger.info(f"Same access paths: {(same_access_paths)}")
+    # logger.info(f"High execution time: {sum(high_execution_time)}")
+    # logger.info(f"Mean query execution time: {np.mean(query_execution_time_estimates)}")
+    logger.info("========================================================================")
+
+    return dict_result
 
 
 
@@ -122,29 +128,34 @@ def calculate_p_error_for_db(database_name, csv_file_path="scripts/plan_cost"):
     if not dir_path.exists():
         return -1
     
-    files = list(dir_path.glob("*true_card_cost.csv"))
+    files = list(dir_path.glob("*true_card_cost.xlsx"))
     assert len(files) == 1
     true_cost_file_path = files[0]
 
     all_dict_list = []
-    for estimates_cost_file_path in dir_path.glob("*.csv"):
+    for estimates_cost_file_path in dir_path.glob("*.xlsx"):
         if true_cost_file_path == estimates_cost_file_path:
             continue
-        print(f"Calculating p_error for {estimates_cost_file_path}")
-
-        calculate_p_error(estimates_cost_file_path.as_posix(), true_cost_file_path.as_posix())   
+        logger.info(f"Calculating p_error for {estimates_cost_file_path}")
+        dict_result = {
+            "database_name": database_name,
+        }
+        update_dict_result = calculate_p_error(estimates_cost_file_path.as_posix(), true_cost_file_path.as_posix())
+        dict_result.update(update_dict_result)
+        all_dict_list.append(dict_result)
+    
+    return all_dict_list
+        
 
 if __name__ == "__main__":
-    # estimates_cost_file_path = "/home/titan/phd/megadrive/End-to-End-CardEst-Benchmark/plan costs/census/census_cost_mscn.xlsx"
-    # true_cost_file_path = "/home/titan/phd/megadrive/End-to-End-CardEst-Benchmark/plan costs/census/census_cost_true.xlsx"
-    # calculate_p_error(estimates_cost_file_path, true_cost_file_path)
-
-
     parser = argparse.ArgumentParser(description="Execute SQL queries and export cost estimates.")
     parser.add_argument("--database_name", default="tpch_sf2_z1", type=str, help="The path to the estimates cost file.")
     parser.add_argument("--csv_file_path", default="scripts/plan_cost", type=str, help="The path to the true cost file.")
     args = parser.parse_args()
-    calculate_p_error_for_db(args.database_name, args.csv_file_path)
-    # estimates_cost_file_path = args.estimates_cost_file_path
-    # true_cost_file_path = args.true_cost_file_path
+    all_dict_list = calculate_p_error_for_db(args.database_name, args.csv_file_path)
+    df = pd.DataFrame(all_dict_list)
+    dest_path = Path(f"{args.csv_file_path}/{args.database_name}/results/p_error_results_all.csv")
+    logger.info(f"Saving all results to {dest_path}")
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(dest_path, index=False)
     

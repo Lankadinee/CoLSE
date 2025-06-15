@@ -7,129 +7,15 @@ from pathlib import Path
 
 import pandas as pd
 import psycopg2
-from get_list_of_files import get_all_unprocessed_txt_files
+from get_list_of_files import get_all_input_files, get_all_unprocessed_txt_files
 from loguru import logger
 from tqdm import tqdm
 
-from colse_enums import Datasets
+from colse_enums import get_common_database_name
 
 RUN_ESTIMATES = True
 RETRY_CONNECTION_WHEN_FAILED = False
 
-METADATA = {
-    "power": {
-        "database_name": "power",
-        "sql_file": "./workloads/power/power_query.sql",
-    },
-    "forest": {
-        "database_name": "forest",
-        "sql_file": "./workloads/forest/forest_query.sql",
-    },
-    "census": {
-        "database_name": "census",
-        "sql_file": "./workloads/census/census_query.sql",
-    },
-    "dmv": {
-        "database_name": "dmv",
-        "sql_file": "./workloads/dmv/dmv_query.sql",
-    },
-    "tpch_sf2_z0": {
-        "database_name": "tpch_sf2_z0",
-        "sql_file": "./workloads/tpch_sf2_z0/tpch_sf2_z0.sql",
-    },
-    "tpch_sf2_z1": {
-        "database_name": "tpch_sf2_z1",
-        "sql_file": "./workloads/tpch_sf2_z1/tpch_sf2_z1.sql",
-    },
-    "tpch_sf2_z2": {
-        "database_name": "tpch_sf2_z2",
-        "sql_file": "./workloads/tpch_sf2_z2/tpch_sf2_z2.sql",
-    },
-    "tpch_sf2_z3": {
-        "database_name": "tpch_sf2_z3",
-        "sql_file": "./workloads/tpch_sf2_z3/tpch_sf2_z3.sql",
-    },
-    "tpch_sf2_z4": {
-        "database_name": "tpch_sf2_z4",
-        "sql_file": "./workloads/tpch_sf2_z4/tpch_sf2_z4.sql",
-    },
-    "tpch_10": {
-        "database_name": "tpch_10",
-        "sql_file": "./workloads/tpch_10/tpch_10.sql",
-    },
-    "tpch_20": {
-        "database_name": "tpch_20",
-        "sql_file": "./workloads/tpch_20/tpch_20.sql",
-    },
-    "synthetic_correlated_2": {
-        "database_name": "synthetic_correlated_2",
-        "sql_file": "./workloads/synthetic_correlated_2/synthetic_correlated_2.sql",
-    },
-    "synthetic_correlated_3": {
-        "database_name": "synthetic_correlated_3",
-        "sql_file": "./workloads/synthetic_correlated_3/synthetic_correlated_3.sql",
-    },
-    "synthetic_correlated_4": {
-        "database_name": "synthetic_correlated_4",
-        "sql_file": "./workloads/synthetic_correlated_4/synthetic_correlated_4.sql",
-    },
-    "synthetic_correlated_6": {
-        "database_name": "synthetic_correlated_6",
-        "sql_file": "./workloads/synthetic_correlated_6/synthetic_correlated_6.sql",
-    },
-    "synthetic_correlated_8": {
-        "database_name": "synthetic_correlated_8",
-        "sql_file": "./workloads/synthetic_correlated_8/synthetic_correlated_8.sql",
-    },
-    "synthetic_correlated_10": {
-        "database_name": "synthetic_correlated_10",
-        "sql_file": "./workloads/synthetic_correlated_10/synthetic_correlated_10.sql",
-    },
-    "tpch_lineitem_10": {
-        "database_name": "tpch_lineitem_10",
-        "sql_file": "./workloads/tpch_lineitem_10/tpch_lineitem_10.sql",
-    },
-    "tpch_lineitem_20": {
-        "database_name": "tpch_lineitem_20",
-        "sql_file": "./workloads/tpch_lineitem_20/tpch_lineitem_20.sql",
-    },
-    "correlated_02": {
-        "database_name": "correlated_02",
-        "sql_file": "./workloads/correlated_02/correlated_02.sql",
-    },
-    "correlated_04": {
-        "database_name": "correlated_04",
-        "sql_file": "./workloads/correlated_04/correlated_04.sql",
-    },
-    "correlated_06": {
-        "database_name": "correlated_06",
-        "sql_file": "./workloads/correlated_06/correlated_06.sql",
-    },
-    "correlated_08": {
-        "database_name": "correlated_08",
-        "sql_file": "./workloads/correlated_08/correlated_08.sql",
-    },
-    "correlated_1_2": {
-        "database_name": "correlated_1_2",
-        "sql_file": "./workloads/correlated_1_2/correlated_1_2.sql",
-    },
-    "random": {
-        "database_name": "random",
-        "sql_file": "./workloads/random/random_query.sql",
-    },
-    "census_cor_02": {
-        "database_name": "census_cor_02",
-        "sql_file": "./workloads/census_cor_02/census_cor_02.sql",
-    },
-    "census_ind_02": {
-        "database_name": "census_ind_02",
-        "sql_file": "./workloads/census_ind_02/census_ind_02.sql",
-    },
-    "census_skew_02": {
-        "database_name": "census_skew_02",
-        "sql_file": "./workloads/census_skew_02/census_skew_02.sql",
-    },
-}
 
 current_dir = Path(__file__).resolve().parent
 
@@ -169,22 +55,23 @@ def create_connection(database_name, cardest_filename=False, query_no=0):
     return conn, cursor
 
 
-def main(dataset, container_name):
-    for cardest_filename in get_all_unprocessed_txt_files(
+def main(dataset: str, container_name):
+    for cardest_filename in get_all_input_files(
         container_name, "/var/lib/pgsql/13.1/data/"
     ):
         run_one_file(dataset, cardest_filename)
 
 
-def run_one_file(dataset: Datasets, cardest_filename: str):
-    database_name = dataset.value
-    sql_file = dataset.get_sql_file_path()
+def run_one_file(database_name: str, cardest_filename: str):
+    logger.info("------------------------------------------------------")
+    logger.info(f"Running {cardest_filename} for {database_name}")
+    database_common_name = get_common_database_name(database_name)
+    sql_file =  f"./workloads/{database_name}/{database_name}.sql"
 
-    conn, cursor = create_connection(database_name)
-    logger.info(f"Processing {cardest_filename}")
+    conn, cursor = create_connection(database_common_name)
 
     export_dirpath = current_dir / f"../plan_cost/{database_name}/"
-    export_filepath = export_dirpath / f'{cardest_filename.split(".")[0] + "_cost.csv"}'
+    export_filepath = export_dirpath / f'{cardest_filename.split(".")[0] + "_cost.xlsx"}'
     logger.info(f"Exporting to {export_filepath}")
     if not export_dirpath.exists():
         export_dirpath.mkdir(parents=True)
@@ -213,12 +100,15 @@ def run_one_file(dataset: Datasets, cardest_filename: str):
     # cursor.execute("SET logger.info_sub_queries=true;")
 
     if RUN_ESTIMATES:
-        logger.info("Using estimates from ", cardest_filename)
+        logger.info(f"Using estimates from {cardest_filename}")
         # Single table queries
         # cursor.execute('SET logger.info_single_tbl_queries=true')
         # cursor.execute("SET enable_indexscan=on;")
+        logger.info("Setting ml_cardest_enabled=true;")
         cursor.execute("SET ml_cardest_enabled=true;")
+        logger.info(f"Setting ml_cardest_fname='{cardest_filename}';")
         cursor.execute(f"SET ml_cardest_fname='{cardest_filename}';")
+        logger.info("Setting query_no=0;")
         cursor.execute("SET query_no=0;")
 
         # Join queries
@@ -242,7 +132,7 @@ def run_one_file(dataset: Datasets, cardest_filename: str):
         sql_txt = "EXPLAIN (FORMAT JSON) " + query.split("\n")[0]
         # cursor.execute(sql_txt)
         # res = cursor.fetchall()
-        logger.info(f"Executing {no}-th query: {sql_txt}")
+        # logger.info(f"Executing {no}-th query: {sql_txt}")
         retry_count = 0
         while True:
             try:
@@ -269,7 +159,7 @@ def run_one_file(dataset: Datasets, cardest_filename: str):
                 logger.info("Retrying... ", retry_count)
                 time.sleep(3)
                 continue
-        logger.info(res)
+        # logger.info(res)
         res_json = res[0][0][0]
         total_cost = res_json["Plan"]["Total Cost"]
         # query_total_time = res_json["Execution Time"] + res_json["Planning Time"]
@@ -301,13 +191,16 @@ def run_one_file(dataset: Datasets, cardest_filename: str):
 
     logger.info("Used estimates from ", cardest_filename)
     df = pd.DataFrame(dict_list)
+    logger.info(f"df: {df.head()}")
 
-    if export_filepath.exists():
-        df_file = pd.read_csv(export_filepath)
-        df = pd.concat([df_file, df], axis=1)
+    # logger.info(f"export_filepath: {export_filepath}")
+    # if export_filepath.exists():
+    #     df_file = pd.read_excel(export_filepath)
+    #     df = pd.concat([df_file, df], axis=1)
 
     """Write to a csv file"""
-    df.to_csv(export_filepath.as_posix(), index=False)
+    logger.info(f"export_filepath: {export_filepath}")
+    df.to_excel(export_filepath.as_posix(), index=False)
 
     cursor.close()
     conn.close()
@@ -339,7 +232,6 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--database_name",
-        choices=METADATA.keys(),
         help="The dataset to use (power or forest).",
     )
     parser.add_argument(
@@ -348,8 +240,8 @@ if __name__ == "__main__":
     parser.add_argument("--filename", default="NA", help="Cardest filename")
 
     args = parser.parse_args()
-    dataset = Datasets(args.database_name)
+    database_name = args.database_name
     if args.filename == "NA":
-        main(dataset, args.container_name)
+        main(database_name, args.container_name)
     else:
-        run_one_file(dataset, args.filename)
+        run_one_file(database_name, args.filename)

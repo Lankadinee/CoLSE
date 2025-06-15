@@ -17,3 +17,5 @@ postgres*
 *.sql
 *.log
 *.txt
+*.backup
+*.xlsx
