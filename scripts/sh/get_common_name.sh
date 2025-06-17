@@ -10,8 +10,6 @@ elif [[ "$DATABASE_NAME" == *"power"* ]]; then
     echo "power"
 elif [[ "$DATABASE_NAME" == *"dmv"* ]]; then
     echo "dmv"
-elif [[ "$DATABASE_NAME" == *"tpch"* ]]; then
-    echo "tpch"
 elif [[ "$DATABASE_NAME" == *"correlated_02"* ]]; then
     echo "correlated_02"
 elif [[ "$DATABASE_NAME" == *"correlated_04"* ]]; then

@@ -114,7 +114,7 @@ class Prerequisists:
                 self.prediction_paths_source = [Path(p) for p in glob(pattern)]
                 # no_of_predictions = len(self.prediction_paths_source)
                 # assert no_of_predictions < 3, f"You cannot have more than 2 predictions for ACE model got [{no_of_predictions}]s - {self.prediction_paths_source}"
-                self.prediction_paths_destination = [CURRENT_DIR / Path(f"workloads/{self.workload_type}/estimates/{self.model_name.name.lower()}.csv")]
+                self.prediction_paths_destination = [CURRENT_DIR / Path(f"workloads/{self.dataset_name}_{self.workload_type}/estimates/{self.model_name.name.lower()}.csv")]
             else:
                 pattern = str(Prerequisists.EXTERNAL_PRED_PATH / f"output/result/{self.dataset_name}_{self.dataset_name}/*{self.model_name.name}*.csv")
                 self.prediction_paths_source = [Path(p) for p in glob(pattern)]

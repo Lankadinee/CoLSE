@@ -19,3 +19,4 @@ postgres*
 *.txt
 *.backup
 *.xlsx
+*.png

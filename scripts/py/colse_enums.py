@@ -13,8 +13,6 @@ def get_common_database_name(dataset_name):
         return "census"
     elif "dmv" in dataset_name:
         return "dmv"
-    elif "tpch" in dataset_name:
-        return "tpch"
     elif "correlated_02" in dataset_name:
         return "correlated_02"
     elif "correlated_04" in dataset_name:
