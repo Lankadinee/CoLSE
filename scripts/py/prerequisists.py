@@ -70,7 +70,7 @@ class Prerequisists:
 
         # query paths
         if self.update_type:
-            self.query_json_file_source = CURRENT_DIR / f"data/{self.dataset_name}/data_updates/query_{self.update_type}.json"
+            self.query_json_file_source = CURRENT_DIR / f"data/{self.dataset_name}/data_updates/query_{self.update_type}_test.json"
             self.query_sql_file = CURRENT_DIR / Path(f"workloads/{self.dataset_name}_{self.update_type}/{self.dataset_name}.sql")
         elif self.workload_type:
             self.query_json_file_source = CURRENT_DIR / f"data/{self.dataset_name}/workload_updates/query_{self.workload_type}.json"
@@ -275,7 +275,7 @@ if __name__ == "__main__":
         # try:
         dataset_name, model_name, update_type = row
         prerequisists = Prerequisists(dataset_name, update_type, model_name)
-        prerequisists.execute(user_input=False)
+        prerequisists.execute(user_input=True)
         # except Exception as e:
         #     logger.error(f"Error for {dataset_name} with {update_type} and {model_name}: {e}")
         

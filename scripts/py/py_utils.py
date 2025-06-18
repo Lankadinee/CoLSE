@@ -84,3 +84,13 @@ def test():
     """Write true cardinality to a txt file"""
     label_file_path = f"data/{dataset_name}/data_updates/label_{update_type}_test.csv"
     write_true_card_to_txt(label_file_path, dataset_name, update_type)
+
+
+def run_excel_to_est_csv():
+    excel_path = "/datadrive500/CoLSEL/data/excels/dvine_v1_dmv_test_sample_retrained_cor_0.2.xlsx"
+    estimates_path = "/datadrive500/CoLSEL/workloads/dmv_cor_0.2/estimates/colse_retrained.csv"
+    no_of_rows = 13910252
+    excel_to_estimates_csv(excel_path, estimates_path, no_of_rows)
+
+if __name__ == "__main__":
+    run_excel_to_est_csv()

@@ -75,6 +75,14 @@ test-updated dataset_name="forest" update-type="ind_0.2": install
 # Run all the commands
 all: install download train test
 
-clean:
+# clear the cache
+clear:
+    rm -rf data/cdf_cache
+    rm -rf data/theta_cache
+    rm -rf data/data_conversion_params
+
+# delete the data and the venv
+[confirm]
+delete:
     rm -rf data/
     rm -rf .venv/

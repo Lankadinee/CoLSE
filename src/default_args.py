@@ -1,5 +1,7 @@
 from colse.data_path import get_data_path
 from colse.dataset_names import DatasetNames
+from rich.console import Console
+from rich.table import Table
 
 
 class Args:
@@ -45,3 +47,12 @@ class Args:
             "output_len": self.output_len,
             "train_test_split": self.train_test_split,
         }
+    
+    def show_args(self):
+        table = Table(title="Args")
+        table.add_column("Name", style="cyan")
+        table.add_column("Value", style="magenta")
+        for key, value in self.get_hyperparameters().items():
+            table.add_row(key, str(value))
+        console = Console()
+        console.print(table)

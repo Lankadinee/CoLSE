@@ -68,6 +68,7 @@ class DataConversion:
 
         logger.info(f"Loading data from {excel_file_path}")
         df = pd.read_excel(excel_file_path)
+        logger.info(f"Data loaded, shape: {df.shape}")
 
         df = df[df['X'].apply(lambda x: isinstance(x, str))]
         logger.info(f"Loaded {len(df)} rows")
@@ -85,6 +86,7 @@ class DataConversion:
         diff[diff == 0] = 1
 
         normalized_query = []
+        query_shape = None
         for q in tqdm(query):
             q_np = np.array(q.split(","), dtype=np.float64).tolist()
             norm_q = np.array(
@@ -93,6 +95,11 @@ class DataConversion:
                     for i, val in enumerate(q_np)
                 ]
             )
+            if query_shape is None:
+                query_shape = norm_q.shape
+            else:
+                assert query_shape == norm_q.shape, f"Query shape mismatch: {query_shape} != {norm_q.shape}"
+
             norm_q[norm_q == -np.inf] = 0
             norm_q[norm_q == np.inf] = 1
             normalized_query.append(norm_q)

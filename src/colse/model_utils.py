@@ -3,6 +3,7 @@ import numpy as np
 import torch
 from loguru import logger
 
+
 from colse.res_utils import decode_label, encode_label, multiply_pairs_norm
 from colse.residual_data_conversion import ResidualData
 
@@ -42,7 +43,7 @@ def rmserror(preds, labels, total_rows):
     return np.sqrt(np.mean(np.square(preds / total_rows - labels / total_rows)))
 
 
-def evaluate(preds, labels, total_rows=-1):
+def evaluate(preds, labels, total_rows=-1, verbose=False):
     errors = []
     for i in range(len(preds)):
         errors.append(qerror(float(preds[i]), float(labels[i])))
@@ -57,8 +58,8 @@ def evaluate(preds, labels, total_rows=-1):
     }
 
     if total_rows > 0:
-        metrics["rms"] = rmserror(preds, labels, total_rows)
-    logger.info(f"{json.dumps(metrics)}")
+        metrics["rms"] = rmserror(preds, labels, total_rows) 
+    logger.info(f"{json.dumps(metrics)}") if verbose else None
     return np.array(errors), metrics
 
 
