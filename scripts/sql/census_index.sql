@@ -1,0 +1,13 @@
+create index idx_age on census using btree(age);
+create index idx_workclass on census using btree(workclass);
+create index idx_education on census using btree(education);
+create index idx_education_num on census using btree(education_num);
+create index idx_marital_status on census using btree(marital_status);
+create index idx_occupation on census using btree(occupation);
+create index idx_relationship on census using btree(relationship);
+create index idx_race on census using btree(race);
+create index idx_sex on census using btree(sex);
+create index idx_capital_gain on census using btree(capital_gain);
+create index idx_capital_loss on census using btree(capital_loss);
+create index idx_hours_per_week on census using btree(hours_per_week);
+create index idx_native_country on census using btree(native_country);

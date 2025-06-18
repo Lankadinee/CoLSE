@@ -22,5 +22,6 @@ dependencies = [
 [dependency-groups]
 dev = [
     "jupyter>=1.1.1",
+    "matplotlib>=3.10.3",
     "rich>=14.0.0",
 ]

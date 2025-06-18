@@ -29,11 +29,6 @@ NUM_THREADS = int(os.environ.get("CPU_NUM_THREADS", os.cpu_count()))
 current_dir = Path(__file__).resolve().parent
 iso_time_str = pd.Timestamp.now().isoformat()
 LOG_ROOT = get_log_path()
-logger.add(
-    LOG_ROOT.joinpath(f"training-{iso_time_str}.log"),
-    rotation="10 MB",
-    level="DEBUG",
-)
 
 
 logger = logger
@@ -42,6 +37,25 @@ args = None
 
 iso_time_str = pd.Timestamp.now().isoformat()
 iso_time_str = iso_time_str.replace(":", "-")
+
+
+def show_metrics(metrics, **kwargs):
+    from rich.console import Console
+    from rich.table import Table
+    table = Table(title="Metrics")
+    table.add_column("Metric", justify="right")
+    table.add_column("Median", justify="right")
+    table.add_column("90th", justify="right")
+    table.add_column("95th", justify="right")
+    table.add_column("99th", justify="right")
+    table.add_column("Max", justify="right")
+    value_list = [f"{metrics['median']:.2f}", f"{metrics['90th']:.2f}", f"{metrics['95th']:.2f}", f"{metrics['99th']:.2f}", f"{metrics['max']:.2f}"]
+    for key, value in kwargs.items():
+        table.add_column(key, justify="right")
+        value_list.append(f"{value:.2f}")
+    table.add_row("Value", *value_list)
+    console = Console()
+    console.print(table)
 
 
 def train_lw_nn(output_model_path, pretrained_model_path, seed=42):
@@ -105,7 +119,7 @@ def train_lw_nn(output_model_path, pretrained_model_path, seed=42):
         model.parameters(), lr=float(args.lr), weight_decay=1e-5
     )
     best_valid_loss = float("inf")
-    best_50_percentile = float("inf")
+    best_metric = float("inf")
 
     """write a custom loss function to handle the residual values"""
 
@@ -238,28 +252,21 @@ def train_lw_nn(output_model_path, pretrained_model_path, seed=42):
             state["current_epoch"] = epoch
             return state
 
-        # """save best model with custom requirements"""
-        # if is_good_model(metrics):
-        #     L.info("best wify model found!")
-        #     L.info("Time to celebrate!")
-        #     time.sleep(5)
-        #     torch.save(get_state(), model_file)
-        #     break
 
         if valid_loss < best_valid_loss:
-            logger.info("best valid loss for now!")
+            logger.info(f"best valid loss for now! {valid_loss:.4f}")
             best_valid_loss = valid_loss
             torch.save(get_state(), output_model_path)
+            logger.info(f"Model saved to {output_model_path}")
 
+        show_metrics(metrics, train_loss=train_loss.mean(), valid_loss=valid_loss, best_valid_loss=best_valid_loss)
         # """save best 50 percentile matrics"""
-        # if metrics["median"] < best_50_percentile:
-        #     best_50_percentile = metrics["median"]
-        #     torch.save(
-        #         get_state(), model_file.parent / f"50_percentile_{model_file.name}"
-        #     )
-        #     L.info(
-        #         f"Best 50 percentile model saved to {model_file.parent / f'50_percentile_{model_file.name}'}"
-        #     )
+        # metric_name = "90th"
+        # if metrics[metric_name] < best_metric:
+        #     best_metric = metrics[metric_name]
+        #     new_model_path = output_model_path.parent / f"{metric_name}_{output_model_path.name}"
+        #     torch.save(get_state(), new_model_path)
+        #     logger.info(f"Best {metric_name} metric [loss {valid_loss:.4f}] model saved to {new_model_path}")
 
         valid_time += time.time() - valid_stmp
 
@@ -328,8 +335,9 @@ if __name__ == "__main__":
     # Convert to dictionary
     args_dict = vars(parsed_args)
     args = Args(**args_dict)
+    args.show_args()
 
-    print(args)
+
     _output_model_path = get_model_path(args.dataset) / f"{args.output_model_name}"
     _pretrained_model_path = None
     if args.pretrained_model_name:
@@ -339,6 +347,15 @@ if __name__ == "__main__":
         else:
             logger.error(f"Pretrained model {_model_path} does not exist")
             exit(1)
+
+    logger.add(
+        LOG_ROOT.joinpath(f"training-{args.dataset_name}-{args.update_type}-{iso_time_str}.log"),
+        rotation="10 MB",
+        level="DEBUG",
+    )
+    
+    print(f"Pretrained model path: {_pretrained_model_path}")
+    print(f"Output model path: {_output_model_path}")
 
     train_lw_nn(
         output_model_path=_output_model_path,

@@ -47,7 +47,7 @@ def main2():
     df2 = load_dataframe(get_data_path() / "dmv/dmv_dequantized_v2.parquet")
 
     dequantizer = SplineDequantizer(M=10000)
-    dequantizer.fit(df1, columns=[col_name])
+    dequantizer.fit(df1, cat_cols=[col_name])
 
     cdf_df = CDFDataFrame(OptimizedEmpiricalCDFModel, max_unique_values="auto")
     cdf_df.fit(df2, nproc=1)
@@ -109,7 +109,7 @@ def main3():
     df = load_dataframe(get_data_path() / "dmv/categorical_test.csv")
 
     dequantizer = SplineDequantizer(M=10000)
-    dequantizer.fit(df, columns=[col_name])
+    dequantizer.fit(df, cat_cols=[col_name])
 
     df2 = dequantizer.transform(df)
 

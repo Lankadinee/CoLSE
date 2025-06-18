@@ -19,10 +19,12 @@ CoLSE is a machine learning-based cardinality estimation system that uses copula
 
 ### Download Required Data
 
-Run the following command to download all necessary datasets and resources:
+Run the following command to download essential datasets and resources:
 ```bash
 just download
 ```
+
+Please use the following link Tto download all the datasets used to condcut the experiments: [data-drive](https://mega.nz/folder/dGEF3KaR#9uGAu2EhfKHZJphr1BANUA)
 
 ### Install Dependencies
 

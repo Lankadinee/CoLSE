@@ -11,6 +11,7 @@ class DataPathDir(StrEnum):
     DATAGEN_CACHE = auto()
     DATA_UPDATES = auto()
     DATA_CONVERSION_PARAMS = auto()
+    WORKLOAD_UPDATES = auto()
 
 def get_data_path(*args):
     CWD = Path(__file__).resolve().parent

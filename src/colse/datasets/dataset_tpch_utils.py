@@ -11,6 +11,7 @@ from colse.dataset_names import DatasetNames
 from colse.datasets.params import ROW_PREFIX
 from colse.df_utils import load_dataframe, save_dataframe
 
+dataset_type_z4 = DatasetNames.TPCH_SF2_Z4_LINEITEM
 
 def tpch_lineitem_preprocess(dataset_type: DatasetNames, skip_if_exists: bool = False):
 
@@ -135,7 +136,7 @@ def get_queries_tpch_lineitem(
         raise FileNotFoundError(f"File {query_json.absolute()} not found")
 
     "Load true cardinality"
-    label_file_name = f"label_{data_split}.csv"
+    label_file_name = f"{query_json.parent}/{query_json.stem.replace('query', 'label')}_{data_split}.csv"
     logger.info(f"Loading true cardinality from {dataset_dir / label_file_name}")
     labels = load_dataframe(dataset_dir / label_file_name)
     true_card = labels["cardinality"].to_numpy().astype(int)
@@ -160,11 +161,11 @@ def get_queries_tpch_lineitem(
                 lb_list.append(query[key][1])
                 ub_list.append(np.inf)
             elif isinstance(query[key], list) and query[key][0] == "=":
-                if (
-                    key == "l_shipdate"
-                    or key == "l_commitdate"
-                    or key == "l_receiptdate"
-                ):
+                if key in [
+                            "l_receiptdate",
+                            "l_commitdate",
+                            "l_shipdate",
+                        ]:
                     no_of_days = (
                         datetime.strptime(query[key][1], "%Y-%m-%d")
                         - datetime.strptime(MIN_DATE, "%Y-%m-%d")

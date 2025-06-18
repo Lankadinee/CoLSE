@@ -27,12 +27,13 @@ current_dir = Path(__file__).resolve().parent
 iso_time_str = datetime.now().isoformat()
 iso_time_str = iso_time_str.replace(":", "-")
 logs_dir = get_log_path()
+pp_enb = True
 logger.add(
     logs_dir.joinpath(f"training-{iso_time_str}.log"),
     rotation="1 MB",
     level="DEBUG",
 )
-
+SHOW_DEBUG_INFO = False
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -42,7 +43,7 @@ def parse_args():
         "--data_split", type=str, default="train", help="Path to the testing Excel file"
     )
     parser.add_argument(
-        "--dataset_name", type=str, default="dmv", help="Name of the dataset"
+        "--dataset_name", type=str, default="tpch_sf2_z4_lineitem", help="Name of the dataset"
     )
     parser.add_argument(
         "--max_unique_values",
@@ -57,6 +58,9 @@ def parse_args():
         "--update_type", type=str, default=None, help="Type of update to the dataset"
     )
     parser.add_argument(
+        "--workload_updates", type=str, default=None, help="Name of the workload updates"
+    )
+    parser.add_argument(
         "--output_excel_name", type=str, default=None, help="Name of the output excel file"
     )
     parser.add_argument(
@@ -68,8 +72,23 @@ def parse_args():
     return parser.parse_args()
 
 
+
+def show_args(parsed_args):
+    table = Table(title="Arguments to the script")
+    table.add_column("Argument", justify="left")
+    table.add_column("Value", justify="right")
+    for arg, value in parsed_args.__dict__.items():
+        table.add_row(arg, str(value))
+    table.add_row("-"*10, "-"*10)
+    table.add_row("Pre-processing", "True" if pp_enb else "False")
+    console = Console()
+    console.print(table)
+
+
+
 def main():
     parsed_args = parse_args()
+    show_args(parsed_args)
     data_split = parsed_args.data_split
     dataset_type = DatasetNames(parsed_args.dataset_name)
     logger.info(f"Dataset Type: {parsed_args.dataset_name} -> {dataset_type.name}")
@@ -80,7 +99,7 @@ def main():
     NO_OF_COLUMNS = len(COLUMN_INDEXES)
 
     # pre process dataset
-    preprocess_dataset(dataset_type, skip_if_exists=True)
+    preprocess_dataset(dataset_type, skip_if_exists=True, pp_enb=pp_enb)
     
     error_comp_model = None
     error_comp_model_path = None
@@ -111,9 +130,12 @@ def main():
         output_file_name = f"{DataPathDir.DATA_UPDATES}/dequantized_v2_{parsed_args.update_type}.parquet"
         query_file_name = f"{DataPathDir.DATA_UPDATES}/query_{parsed_args.update_type}.json"
     else:
-        original_file_name = dataset_type.get_file_path()
+        original_file_name = dataset_type.get_file_path(pp_enb=pp_enb)
         output_file_name = "dequantized_v2.parquet"
-        query_file_name = None
+        if parsed_args.workload_updates:
+            query_file_name = f"{DataPathDir.WORKLOAD_UPDATES}/query_{parsed_args.workload_updates}.json"
+        else:
+            query_file_name = None
 
     s_dequantize = SplineDequantizer(
         dataset_type=dataset_type,
@@ -217,46 +239,81 @@ def main():
         # start_time_cdf = time.time()
         start_time_predict_cdf = time.time()
         # print(query)
-        cdf_list = s_dequantize.get_converted_cdf(query, COLUMN_INDEXES)
+        original_cdf_list = s_dequantize.get_converted_cdf(query, COLUMN_INDEXES)
+        
         time_taken_predict_cdf = time.time() - start_time_predict_cdf
         # time_taken_cdf = time.time() - start_time_cdf
         # Reshape the array into pairs
-        reshaped_cdf_list = cdf_list.reshape(-1, 2)
+        reshaped_cdf_list = original_cdf_list.reshape(-1, 2)
         # Identifying the indexes where the first value is not equal to 0 and the second value is not equal to 1
         non_zero_non_one_indices = np.where(
             (reshaped_cdf_list[:, 0] != 0) | (reshaped_cdf_list[:, 1] != 1)
         )[0]
+        
+
         col_indices = [i + 1 for i in non_zero_non_one_indices]
         cdf_list = reshaped_cdf_list[non_zero_non_one_indices].reshape(-1)
+
+        # logger.info(f"Query [{query.shape}]: {query}")
+        # logger.info(f"Original CDF [{original_cdf_list.shape}]: {original_cdf_list}")
+        # logger.info(f"Query Modified [{query_modified.shape}]: {query_modified}")
+        # logger.info(f"CDF [{cdf_list.shape}]: {cdf_list}")
+
         no_of_cols_for_this_query = len(col_indices)
         loop.set_description(f"#cols: {no_of_cols_for_this_query:2d}")
-        y_bar = None
-
         start_time = time.time()
-        y_bar = (
-            model.predict(cdf_list, column_list=col_indices) if y_bar is None else y_bar
-        )
-        time_taken = time.time() - start_time
+        y_bar = model.predict(cdf_list, column_list=col_indices)
+        copula_pred_time = time.time() - start_time
 
-        time_taken_list.append(time_taken)
+        time_taken_list.append(copula_pred_time)
         time_taken_predict_cdf_list.append(time_taken_predict_cdf)
-        # if len(time_taken_list) == 1000:
-        #     break
+        
 
         if np.isnan(y_bar):  # or np.isnan(y_bar_2):
             nan_count += 1
             continue
         q_error = qerror(y_bar, y_act, no_of_rows=no_of_rows)
         mapped_query = s_dequantize.get_mapped_query(query, COLUMN_INDEXES)
+        # logger.info(f"Prediction: {y_bar} Mapped query: {mapped_query}")
+        if not any(mapped_query):
+            logger.warning(f"Mapped query is empty for query: {query}")
+            raise ValueError(f"Mapped query is empty for query: {query}")
 
         if error_comp_model:
-            y_bar_2 = error_comp_model.inference(
-                query=mapped_query, cdf=cdf_list, y_bar=y_bar
-            )[0]
-            q_error_2 = qerror(y_bar_2, y_act, no_of_rows=None)
+            if y_bar == 0:
+                y_bar_2 = 0
+                q_error_2 = q_error
+                # logger.warning(f"y_bar is 0 actual[{y_act}] Error:{q_error} for query: {query_modified},\n CDF: {cdf_list}\n Mapped query: {mapped_query}\n skipping error compensation")
+            else:
+                y_bar_2 = error_comp_model.inference(
+                    query=mapped_query, cdf=cdf_list, y_bar=y_bar
+                )[0]
+                q_error_2 = qerror(y_bar_2, y_act, no_of_rows=None)
         else:
             q_error_2 = None
             y_bar_2 = None
+
+        #####################################################
+        if SHOW_DEBUG_INFO:
+            query_modified = query.reshape(-1,2)[non_zero_non_one_indices]    
+            table = Table(title="Debug Info")
+            table.add_column("Item", justify="right")
+            table.add_column("Shape", justify="right")
+            table.add_column("Value", justify="right")
+
+            table.add_row("Query", f"{query.shape}", f"{query}")
+            table.add_row("Original CDF", f"{original_cdf_list.shape}", f"{original_cdf_list.round(3)}")
+            table.add_row("Modified Query", f"{query_modified.shape}", f"{query_modified}")
+            table.add_row("CDF", f"{cdf_list.shape}", f"{cdf_list}")
+            table.add_row("Mapped Query", f"{mapped_query.shape}", f"{mapped_query}")
+            table.add_row("Y Bar", f"{y_bar.shape}", f"{y_bar}")
+            table.add_row("Y Bar 2", f"{y_bar_2.shape if y_bar_2 is not None else 'None'}", f"{y_bar_2}")
+            table.add_row("Y", f"{y_act.shape if y_act is not None else 'None'}", f"{y_act}")
+            console = Console()
+
+            console.print(table)
+
+        #####################################################
 
         dict_list.append(
             {
@@ -269,7 +326,7 @@ def main():
                 "gt": y_act * no_of_rows,
                 "y_bar_card": max(y_bar * no_of_rows, 1),
                 "y_card": y_act * no_of_rows,
-                "time_taken": time_taken,
+                "time_taken": copula_pred_time,
                 "q_error": q_error,
                 "q_error_2": q_error_2,
                 "exec_count": model.exec_count,

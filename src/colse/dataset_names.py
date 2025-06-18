@@ -1,5 +1,7 @@
 from enum import Enum
 
+from loguru import logger
+
 from colse.data_path import get_data_path
 
 
@@ -40,7 +42,7 @@ class DatasetNames(str, Enum):
             or self == DatasetNames.CORRELATED_08
         )
 
-    def get_file_path(self, filename=None, exist_check=True):
+    def get_file_path(self, filename=None, exist_check=True, pp_enb=True):
         if self == DatasetNames.POWER_DATA:
             dp = get_data_path(self.value) / (filename if filename else "original.csv")
         elif self == DatasetNames.DMV_DATA:
@@ -50,12 +52,14 @@ class DatasetNames(str, Enum):
         elif self == DatasetNames.CENSUS_DATA:
             dp = get_data_path(self.value) / (filename if filename else "census.csv")
         elif self.is_tpch_type():
+            default_filename = "original_preprocessed.parquet" if pp_enb else "original.parquet"
+            logger.info(f"Using {default_filename} for {self}")
             dp = get_data_path(self.value) / (
-                filename if filename else "original_preprocessed.parquet"
+                filename if filename else default_filename
             )
         elif self.is_correlated_type():
             dp = get_data_path(self.value) / (
-                filename if filename else "original.csv"
+                filename if filename else "original.parquet"
             )
         else:
             raise ValueError(f"Dataset {self} not supported")
@@ -114,7 +118,6 @@ class DatasetNames(str, Enum):
             return 11
         elif (
             self == DatasetNames.TPCH_SF2_Z1_LINEITEM
-            or self == DatasetNames.TPCH_SF2_Z0_LINEITEM
         ):
             return 15
         elif self == DatasetNames.TPCH_SF2_Z2_LINEITEM:
@@ -123,19 +126,8 @@ class DatasetNames(str, Enum):
             return 15
         elif self == DatasetNames.TPCH_SF2_Z4_LINEITEM:
             return 15
-        elif self == DatasetNames.CORRELATED_2:
-            return 2
-        elif self == DatasetNames.CORRELATED_3:
-            return 3
-        elif self == DatasetNames.CORRELATED_4:
-            return 4
-        elif self == DatasetNames.CORRELATED_6:
-            return 6
-        elif self == DatasetNames.CORRELATED_8:
-            return 8
         elif (
-            self == DatasetNames.CORRELATED_10
-            or self == DatasetNames.CORRELATED_02
+            self == DatasetNames.CORRELATED_02
             or self == DatasetNames.CORRELATED_04
             or self == DatasetNames.CORRELATED_06
             or self == DatasetNames.CORRELATED_08

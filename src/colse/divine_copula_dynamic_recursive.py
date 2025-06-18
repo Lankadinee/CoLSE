@@ -1,3 +1,4 @@
+import numpy as np
 from colse.copula_functions import get_copula, gumbel_grad
 from colse.copula_types import CopulaTypes
 from loguru import logger
@@ -72,6 +73,12 @@ class DivineCopulaDynamicRecursive:
             self.exec_count += 1
             ce = lb_ub_list[1] - lb_ub_list[0]
             return ce if ce > 0 else self.EPSILON
+        
+        # This might not happen at all, but just in case | TODO: Check performance impact and remove if needed
+        # is_any_two_values_equal = np.any(lb_ub_list[0::2] == lb_ub_list[1::2])
+        # if is_any_two_values_equal:
+        #     logger.warning(f"Any two values are equal : {lb_ub_list}")
+        #     return 0
 
         p_values = {}
 

@@ -83,7 +83,7 @@ def main():
     dataset_path = dataset_type.get_file_path()
     df = load_dataframe(dataset_path)
     col_names = list(df.columns)
-    s_dequantize.fit(df, columns=dataset_type.get_non_continuous_columns())
+    s_dequantize.fit(df, cat_cols=dataset_type.get_categorical_columns(), des_cols=dataset_type.get_descrete_columns())
 
     cdf_df = CDFStorage(
         OptimizedEmpiricalCDFModel,

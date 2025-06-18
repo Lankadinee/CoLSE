@@ -24,10 +24,15 @@ def get_file_list(container_name, directory):
 
 def get_all_unprocessed_txt_files(container_name, directory):
     files = get_file_list(container_name, directory)
-    all_txt_files = [file.split('.')[0] for file in files if file.endswith(".txt")]
+    all_txt_files = [file.split('.')[0] for file in files if file.endswith(".csv")]
     all_excel_files = [file.split('.')[0] for file in files if file.endswith(".xlsx")]
     unprocessed_files = list(set(all_txt_files) - set(all_excel_files))
-    return [f"{fname}.txt" for fname in unprocessed_files]
+    return [f"{fname}.csv" for fname in unprocessed_files]
+
+def get_all_input_files(container_name, directory):
+    files = get_file_list(container_name, directory)
+    all_csv_files = [file.split('.')[0] for file in files if file.endswith(".csv")]
+    return [f"{fname}.csv" for fname in all_csv_files]
 
 def analyze_results(estimate_file_name, true_file_name):
     df_estimates = pd.read_csv(estimate_file_name)

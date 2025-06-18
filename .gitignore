@@ -16,3 +16,7 @@ postgres*
 *.csv
 *.sql
 *.log
+*.txt
+*.backup
+*.xlsx
+*.png

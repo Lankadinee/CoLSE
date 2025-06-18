@@ -1,3 +1,5 @@
+from datetime import datetime
+import os
 import pickle
 import time
 from dataclasses import dataclass, field
@@ -16,17 +18,18 @@ from colse.dataset_names import DatasetNames
 from colse.df_utils import save_dataframe
 
 
+# set logger level to DEBUG
+logger.level("INFO")
+
 class DequantizerType(StrEnum):
     CATEGORICAL = auto()
     CONTINUOUS = auto()
-
 
 @dataclass
 class Metadata:
     df_cols: list[str] = field(default_factory=list)
     df_max_values: dict[str, float] = field(default_factory=dict)
     df_min_values: dict[str, float] = field(default_factory=dict)
-
 
 class SplineDequantizer:
     """
@@ -58,7 +61,7 @@ class SplineDequantizer:
         self._m = m
         self._dequantizers = {
             DequantizerType.CATEGORICAL: {},
-            DequantizerType.CONTINUOUS: {},
+            DequantizerType.CONTINUOUS: {}
         }  # will hold per-column parameters
         self._metadata = Metadata()
         self._dataset_type = dataset_type
@@ -68,12 +71,10 @@ class SplineDequantizer:
             path = None
 
         self._already_loaded = False
-        if path: 
-            if path.exists():
-                self.load_from_pickle(path)
-                self._already_loaded = True
-            else:
-                logger.warning(f"Dequantizer cache not found at {path}")
+        if path and path.exists():
+            self.load_from_pickle(path)
+            self._already_loaded = True
+            logger.warning(f"Dequantizer cache found and loaded from:{path}")
 
         self._cache_path = path
 
@@ -106,6 +107,7 @@ class SplineDequantizer:
         pchip_cdf = PchipInterpolator(xs, ys, extrapolate=False)
 
         self._dequantizers[DequantizerType.CONTINUOUS][col_name] = {
+            "is_one_value": False,
             "spline_cdf": pchip_cdf,
             # "edges": edges,
             # "cdf_bin": cdf_bin,
@@ -123,9 +125,13 @@ class SplineDequantizer:
             - grid_z  : M linearly spaced points between min and max unique values
             - grid_c  : spline_cdf(grid_z), used for fast inversion
         """
+        logger.info(f"X shape: {x.shape}")
         if is_numeric_dtype(x):
+            logger.info("Numeric column")
             uniques = np.sort(x.dropna().unique())
             K = len(uniques)
+            # logger.info(f"Uniques shape: {uniques.shape}")
+            # logger.info(f"K: {K}")
             mapping = {val: idx for idx, val in enumerate(uniques)}
             codes = x.map(mapping).values
             N = len(codes)
@@ -134,12 +140,15 @@ class SplineDequantizer:
             cdf_vals = np.cumsum(p)
             z_b = uniques.astype(np.float64)
         else:
+            logger.info("Categorical column")
             codes, uniques = pd.factorize(x, sort=True)
             if (codes < 0).any():
                 raise ValueError(
                     f"Column '{col_name}' contains NaN or unseen categories during fit."
                 )
             K = len(uniques)
+            # logger.info(f"Uniques shape: {uniques.shape}")
+            # logger.info(f"K: {K}")
             mapping = {val: idx for idx, val in enumerate(uniques)}
             N = len(codes)
             counts = np.bincount(codes, minlength=K)
@@ -147,19 +156,30 @@ class SplineDequantizer:
             cdf_vals = np.cumsum(p)
             z_b = np.arange(K, dtype=np.float64)
 
-        spline_cdf = PchipInterpolator(z_b, cdf_vals, extrapolate=False)
-        grid_z = np.linspace(z_b[0], z_b[-1], self._m, dtype=np.float64)
-        grid_c = spline_cdf(grid_z)
-        self._dequantizers[DequantizerType.CATEGORICAL][col_name] = {
-            # "uniques": uniques,
-            # "K": K,
-            "mapping": mapping,
-            "cdf_vals": cdf_vals,
-            # "z_b": z_b,
-            "spline_cdf": spline_cdf,
-            "grid_z": grid_z,
-            "grid_c": grid_c,
-        }
+        # logger.info(f"CDF values shape: {cdf_vals.shape}")
+        # logger.info(f"Z_b values shape: {z_b.shape}")
+        # logger.info(f"ConditionK {K}: {K == 1}")
+        if K == 1:
+            self._dequantizers[DequantizerType.CATEGORICAL][col_name] = {
+                "mapping": mapping,
+                "cdf_vals": cdf_vals,
+                "is_one_value": True,
+            }
+        else:
+            spline_cdf = PchipInterpolator(z_b, cdf_vals, extrapolate=False)
+            grid_z = np.linspace(z_b[0], z_b[-1], self._m, dtype=np.float64)
+            grid_c = spline_cdf(grid_z)
+            self._dequantizers[DequantizerType.CATEGORICAL][col_name] = {
+                "is_one_value": False,
+                # "uniques": uniques,
+                # "K": K,
+                "mapping": mapping,
+                "cdf_vals": cdf_vals,
+                # "z_b": z_b,
+                "spline_cdf": spline_cdf,
+                "grid_z": grid_z,
+                "grid_c": grid_c,
+            }
 
     def fit(self, df: pd.DataFrame, columns=None):
         """
@@ -189,7 +209,7 @@ class SplineDequantizer:
 
         # Fit continuous columns
         for col in [c for c in df.columns if c not in columns]:
-            logger.info(f"Fitting dequantizer for continuous/discrete column: {col}")
+            logger.info(f"Fitting dequantizer for continuous column: {col}")
             self._fit_continuous_column(df[col], col)
 
         logger.info("Dequantizer fitted successfully.")
@@ -217,6 +237,12 @@ class SplineDequantizer:
         Returns an array of shape (N,) with values on the original scale of z_b.
         """
         params = self._dequantizers[DequantizerType.CATEGORICAL][col_name]
+        if params["is_one_value"]:
+            mapping = params["mapping"]
+            # logger.debug(f"Mapping: {mapping}")
+            values = x.map(mapping)
+            # logger.debug(f"Values: {values}, unique: {values.unique()}")
+            return values
         mapping = params["mapping"]
         grid_z = params["grid_z"]
         grid_c = params["grid_c"]
@@ -236,39 +262,38 @@ class SplineDequantizer:
         z = np.interp(v, grid_c, grid_z)
         return z
 
-    def transform(self, df: pd.DataFrame, columns=None) -> pd.DataFrame:
+    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Currently only supports dequantizing Categorical columns.
-        TODO: Add support for Discrete columns.?!
 
         Dequantize each specified column in df and return a new DataFrame
         containing only the continuous (dequantized) versions of those columns.
         """
         start_time = time.perf_counter()
-        if columns is None:
-            columns = list(self._dequantizers[DequantizerType.CATEGORICAL].keys())
+        
+        cat_cols = self._dataset_type.get_non_continuous_columns() 
         result = pd.DataFrame(index=df.index)
         table_v1 = Table(title="Time taken for Dequantizer")
         table_v1.add_column("Column Name", justify="right")
         table_v1.add_column("Time taken (in seconds)", justify="right")
         for col in df.columns:
-            if col in columns:
-                start_time_transform = time.perf_counter()
+            start_time_transform = time.perf_counter()
+            if col in cat_cols:
                 result[col] = self._transform_single_column(df[col], col)
-                time_taken_for_transform = time.perf_counter() - start_time_transform
-                table_v1.add_row(col, f"{time_taken_for_transform:.2f}")
             else:
                 result[col] = df[col]
-        time_taken_for_transform = time.perf_counter() - start_time
+            time_taken_for_transform = time.perf_counter() - start_time_transform
+            table_v1.add_row(col, f"{time_taken_for_transform:.2f}")
+        time_taken_for_total_transform = time.perf_counter() - start_time
 
-        table = Table(title="Time taken for Dequantizer")
+        table = Table(title="Total Time taken for Dequantizer")
         table.add_column("Type", justify="right")
         table.add_column("Time taken (in seconds)", justify="right")
-        table.add_row("Transform", f"{time_taken_for_transform:.2f}")
+        table.add_row("Transform", f"{time_taken_for_total_transform:.2f}")
         table.add_row("Fit", f"{self._time_taken_for_fit:.2f}")
         table.add_row(
             "Fit + Transform",
-            f"{time_taken_for_transform + self._time_taken_for_fit:.2f}",
+            f"{time_taken_for_total_transform + self._time_taken_for_fit:.2f}",
         )
         console = Console()
         console.print(table_v1)
@@ -283,13 +308,13 @@ class SplineDequantizer:
         self.fit(df, columns=non_continuous_columns)
         if len(non_continuous_columns) > 0:
             logger.info(f"Dequantizing {len(non_continuous_columns)} non-continuous columns")
-            return self.transform(df, columns=non_continuous_columns)
+            return self.transform(df)
         else:
             logger.info("No non-continuous columns to dequantize")
             return df
 
 
-    def get_cdf_values(self, col_name: str, original_value) -> float:
+    def  _get_cdf_values(self, col_name: str, original_value) -> float:
         """
         Given one old-data value, return the cumulative frequency at that value.
         """
@@ -299,84 +324,108 @@ class SplineDequantizer:
         if float(original_value) <= self._metadata.df_min_values[col_name]:
             return 0
 
-        if col_name in self._dequantizers[DequantizerType.CONTINUOUS]:
-            return self._dequantizers[DequantizerType.CONTINUOUS][col_name][
-                "spline_cdf"
-            ](float(original_value))
+        _metadata = self._dequantizers[DequantizerType.CONTINUOUS][col_name]
+        return _metadata["spline_cdf"](float(original_value))
 
-        spline = self._dequantizers[DequantizerType.CATEGORICAL][col_name]["spline_cdf"]
-        cdf_at_v = float(spline(original_value))
-        return cdf_at_v
 
-    def get_cdf_values_for_cat(
+    def _get_cdf_values_for_cat(
         self, col_name: str, original_value: str, ub=True
     ) -> float:
         """
         Given a query and a column index, return the cumulative frequency at that value.
         """
+        
         if original_value in [-np.inf, np.str_("-inf")]:
             return 0
         if original_value in [np.inf, np.str_("inf")]:
             return 1
-        code = self._dequantizers[DequantizerType.CATEGORICAL][col_name]["mapping"][
-            original_value
-        ]
+        
+        _metadata = self._dequantizers[DequantizerType.CATEGORICAL][col_name]
+        try:
+            mapping = _metadata["mapping"]
+            code = mapping[original_value] if original_value in mapping else mapping[str(original_value)]
+        except KeyError:
+            logger.warning(f"Value {original_value} not found in {col_name} mapping for column {mapping.keys()}")
+            return 0
+            # raise ValueError(f"Value {original_value} not found in mapping for column {mapping.keys()}")
+        
         if ub:
-            return self._dequantizers[DequantizerType.CATEGORICAL][col_name][
-                "cdf_vals"
-            ][code]
+            return _metadata["cdf_vals"][code]
         else:
             if code == 0:
                 return 0
-            return self._dequantizers[DequantizerType.CATEGORICAL][col_name][
-                "cdf_vals"
-            ][code - 1]
+            return _metadata["cdf_vals"][code - 1]
+
+
+    def _get_cdf_values_for_descrete(self, col_name: str, original_value: str, strict=False) -> float:
+        """
+        Given a query and a column index, return the cumulative frequency at that value.
+        """
+        meta = self._dequantizers[DequantizerType.DISCRETE][col_name]
+        # find the index: the largest `i` such that uniques[i] == original_value
+        idx = np.searchsorted(meta["uniques"], float(original_value))
+        if idx >= len(meta["uniques"]):
+            # unseen value: handle as 0 or 1 or via spline fallback
+            return 1
+        elif idx == 0:
+            return 0
+        # now return strict vs non-strict CDF
+        return meta["cdf_values_strict"][idx] if strict else meta["cdf_vals"][idx]
+    
 
     def get_converted_cdf(self, query, column_indexes):
         """Convert a query into continuous CDF values."""
 
         cdf_values = []
-        categorical_columns = self._dequantizers[DequantizerType.CATEGORICAL].keys()
-        for idx, value in enumerate(query[0]):
-            col_name = self._metadata.df_cols[column_indexes[idx // 2]]
-
+        categorical_columns = self._dataset_type.get_non_continuous_columns()
+        pairwise_query = query.reshape(-1, 2)
+        for idx, (value_lb, value_ub) in enumerate(pairwise_query):
+            col_name = self._metadata.df_cols[column_indexes[idx]]
             if col_name in categorical_columns:
-                ub = True if idx % 2 == 1 else False
-                cdf_values.append(self.get_cdf_values_for_cat(col_name, value, ub=ub))
+                cdf_values.append(self._get_cdf_values_for_cat(col_name, value_lb, ub=False))
+                cdf_values.append(self._get_cdf_values_for_cat(col_name, value_ub, ub=True))
             else:
-                cdf_values.append(self.get_cdf_values(col_name, value))
+                cdf_values.append(self._get_cdf_values(col_name, value_lb))
+                cdf_values.append(self._get_cdf_values(col_name, value_ub))
 
-        return np.array(cdf_values)
+        return np.clip(np.array(cdf_values), 0, 1)
 
+    # this is public method
     def get_mapped_query(self, query, column_indexes):
-        """Convert categorical columns in a query into their mapped values"""
+        """
+        Convert the query into a mapped query.
+        Use each column's mapping to convert the query into a mapped query.
+        """
         mapped_query = []
-        categorical_columns = self._dequantizers[DequantizerType.CATEGORICAL].keys()
-        for idx, value in enumerate(query[0]):
-            col_name = self._metadata.df_cols[column_indexes[idx // 2]]
-            if col_name in categorical_columns:
-                if value == np.str_("-inf"):
-                    mapped_query.append(
-                        min(
-                            self._dequantizers[DequantizerType.CATEGORICAL][col_name][
-                                "mapping"
-                            ].values()
+        _metadata = None
+        categorical_columns = self._dataset_type.get_non_continuous_columns()
+        try:
+            for idx, value in enumerate(query[0]):
+                col_name = self._metadata.df_cols[column_indexes[idx//2]]
+                if col_name in categorical_columns:
+                    _metadata = self._dequantizers[DequantizerType.CATEGORICAL][col_name]
+                    if value == np.str_("-inf"):
+                        mapped_query.append(
+                            min(
+                                _metadata["mapping"].values()
+                            )
                         )
-                    )
-                elif value == np.str_("inf"):
-                    mapped_query.append(
-                        max(
-                            self._dequantizers[DequantizerType.CATEGORICAL][col_name][
-                                "mapping"
-                            ].values()
+                    elif value == np.str_("inf"):
+                        mapped_query.append(
+                            max(
+                                _metadata["mapping"].values()
+                            )
                         )
-                    )
+                    else:
+                        mapped_query.append(
+                            _metadata["mapping"][value]
+                        )
                 else:
-                    mapped_query.append(
-                        self._dequantizers[DequantizerType.CATEGORICAL][col_name][
-                            "mapping"
-                        ][value]
-                    )
-            else:
-                mapped_query.append(np.float64(value))
+                    mapped_query.append(np.float64(value))
+        except KeyError:
+            keys = _metadata["mapping"].keys() if _metadata else None
+            logger.info(f"Query: {query} Column Indexes: {column_indexes} Column Name: {col_name} All columns: {self._metadata.df_cols}")
+            logger.exception(f"Value {value} not found in {col_name} mapping for column {keys}")
+            raise ValueError(f"Value {value} not found in {col_name} mapping for column {keys}")
+        
         return np.array(mapped_query)

@@ -1,0 +1,11 @@
+create index idx_record_type on dmv using btree(Record_Type);
+create index idx_registration_class on dmv using btree(Registration_Class);
+create index idx_state on dmv using btree(State);
+create index idx_county on dmv using btree(County);
+create index idx_body_type on dmv using btree(Body_Type);
+create index idx_fuel_type on dmv using btree(Fuel_Type);
+create index idx_reg_valid_date on dmv using btree(Reg_Valid_Date);
+create index idx_color on dmv using btree(Color);
+create index idx_scofflaw_indicator on dmv using btree(Scofflaw_Indicator);
+create index idx_suspension_indicator on dmv using btree(Suspension_Indicator);
+create index idx_revocation_indicator on dmv using btree(Revocation_Indicator);

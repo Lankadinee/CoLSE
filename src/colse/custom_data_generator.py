@@ -66,16 +66,10 @@ from colse.datasets.variable_dataset import (
 from colse.transform_datasets import convert_df_to_dequantize
 
 DS_TYPE_MAPPER = {
-    DatasetNames.CUSTOM: generate_dataset_v1,
-    DatasetNames.PAYROLL_DATA: generate_dataset_v2,
-    DatasetNames.GAS_DATA: generate_dataset_gas,
-    DatasetNames.CUSTOM_2: generate_dataset_v3,
     DatasetNames.FOREST_DATA: generate_dataset_forest,
     DatasetNames.POWER_DATA: generate_dataset_power,
-    DatasetNames.VARIABLE: generate_dataset_variable,
     DatasetNames.CENSUS_DATA: generate_dataset_census,
     DatasetNames.DMV_DATA: generate_dataset_dmv,
-    DatasetNames.TPCH_SF2_Z0_LINEITEM: generate_dataset_tpch_sf2_z0_lineitem,
     DatasetNames.TPCH_SF2_Z1_LINEITEM: generate_dataset_tpch_sf2_z1_lineitem,
     DatasetNames.TPCH_SF2_Z2_LINEITEM: generate_dataset_tpch_sf2_z2_lineitem,
     DatasetNames.TPCH_SF2_Z3_LINEITEM: generate_dataset_tpch_sf2_z3_lineitem,
@@ -89,12 +83,10 @@ DS_TYPE_MAPPER = {
 }
 
 QUERY_GENERATE_MAPPER = {
-    DatasetNames.GAS_DATA: get_queries,
     DatasetNames.FOREST_DATA: get_queries_forest,
     DatasetNames.POWER_DATA: get_queries_power,
     DatasetNames.CENSUS_DATA: get_queries_census,
     DatasetNames.DMV_DATA: get_queries_dmv,
-    DatasetNames.TPCH_SF2_Z0_LINEITEM: get_queries_tpch_sf2_z0_lineitem,
     DatasetNames.TPCH_SF2_Z1_LINEITEM: get_queries_tpch_sf2_z1_lineitem,
     DatasetNames.TPCH_SF2_Z2_LINEITEM: get_queries_tpch_sf2_z2_lineitem,
     DatasetNames.TPCH_SF2_Z3_LINEITEM: get_queries_tpch_sf2_z3_lineitem,
@@ -132,7 +124,7 @@ class CustomDataGen:
         self,
         no_of_rows: Optional[int] = 500000,
         no_of_queries: Optional[int] = 1000,
-        dataset_type: DatasetNames = DatasetNames.PAYROLL_DATA,
+        dataset_type: DatasetNames = DatasetNames.FOREST_DATA,
         data_file_name: str | None = None,
         query_file_name: str | None = None,
         data_split="test",
@@ -344,13 +336,13 @@ class CustomDataGen:
                 self.sample_query_col_list = list(range(self.no_of_features))
                 no_inf = True
 
-            self.query_l, self.query_r = QUERY_GENERATE_MAPPER_CUSTOM[
-                self.dataset_type
-            ](
-                no_of_queries=self.no_of_queries,
-                queried_columns=self.sample_query_col_list,
-                no_inf=no_inf,
-            )
+            # self.query_l, self.query_r = QUERY_GENERATE_MAPPER_CUSTOM[
+            #     self.dataset_type
+            # ](
+            #     no_of_queries=self.no_of_queries,
+            #     queried_columns=self.sample_query_col_list,
+            #     no_inf=no_inf,
+            # )
             self.true_card = self._get_actual_cardinality()
             return self.query_l.shape[0]
         else:
