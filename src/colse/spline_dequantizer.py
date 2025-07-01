@@ -17,16 +17,20 @@ from colse.data_path import DataPathDir, get_data_path
 from colse.dataset_names import DatasetNames
 from colse.df_utils import save_dataframe
 
+# set seed for numpy
+np.random.seed(42)
 
 # set logger level to DEBUG
 logger.level("INFO")
 
 class DequantizerType(StrEnum):
+    """ Type of dequantizer """
     CATEGORICAL = auto()
     CONTINUOUS = auto()
 
 @dataclass
 class Metadata:
+    """ Metadata for the dequantizer """
     df_cols: list[str] = field(default_factory=list)
     df_max_values: dict[str, float] = field(default_factory=dict)
     df_min_values: dict[str, float] = field(default_factory=dict)
@@ -46,10 +50,10 @@ class SplineDequantizer:
     """
 
     def __init__(
-        self, dataset_type: DatasetNames, 
-        m: int = 10000, 
-        cache_name: str = None,
-        output_file_name: str = None
+        self, dataset_type: DatasetNames,
+        m: int = 10000,
+        cache_name: str | None = None,
+        output_file_name: str | None = None
     ):
         """
         Parameters
@@ -66,17 +70,17 @@ class SplineDequantizer:
         self._metadata = Metadata()
         self._dataset_type = dataset_type
         if cache_name:
-            path = get_data_path(DataPathDir.CDF_CACHE, dataset_type.value) / f"{cache_name}"
+            _path = get_data_path(DataPathDir.CDF_CACHE, dataset_type.value) / f"{cache_name}"
         else:
-            path = None
+            _path = None
 
         self._already_loaded = False
-        if path and path.exists():
-            self.load_from_pickle(path)
+        if _path and _path.exists():
+            self.load_from_pickle(str(_path))
             self._already_loaded = True
-            logger.warning(f"Dequantizer cache found and loaded from:{path}")
+            logger.warning(f"Dequantizer cache found and loaded from:{_path}")
 
-        self._cache_path = path
+        self._cache_path = _path
 
         self._time_taken_for_fit = 0
         self._out_file_name = output_file_name if output_file_name else "dequantized_v2.parquet"
@@ -85,6 +89,7 @@ class SplineDequantizer:
         )
 
     def get_dequantized_dataset_name(self):
+        """ Get the name of the dequantized dataset """
         if self._dequantized_dataset_path.exists():
             return self._out_file_name
         else:
@@ -217,16 +222,18 @@ class SplineDequantizer:
         logger.info(f"Time taken for fit: {self._time_taken_for_fit:.2f} seconds")
 
         if self._cache_path and not self._already_loaded:
-            self.save_to_pickle(self._cache_path)
+            self.save_to_pickle(str(self._cache_path))
         return True
 
     def save_to_pickle(self, path: str):
+        """ Save the dequantizer to a pickle file """
         save_list = [self._metadata, self._dequantizers]
         with open(path, "wb") as f:
             pickle.dump(save_list, f)
         logger.info(f"Dequantizer saved to {path}")
 
     def load_from_pickle(self, path: str):
+        """ Load the dequantizer from a pickle file """
         with open(path, "rb") as f:
             self._metadata, self._dequantizers = pickle.load(f)
         logger.info(f"Dequantizer loaded from {path}")
@@ -304,6 +311,7 @@ class SplineDequantizer:
         return result
     
     def fit_transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        """ Fit the dequantizer and transform the dataset """
         non_continuous_columns = self._dataset_type.get_non_continuous_columns()
         self.fit(df, columns=non_continuous_columns)
         if len(non_continuous_columns) > 0:

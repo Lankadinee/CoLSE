@@ -44,6 +44,10 @@ test dataset_name="forest": install
     --output_excel_name dvine_v1_{{dataset_name}}_test_sample.xlsx --model_name "error_comp_model.pt" \
     --theta_cache_path "theta_cache.pkl" --cdf_cache_name "cdf_cache.pkl"
 
+train_test dataset_name="forest": install
+    just train {{dataset_name}}
+    just test {{dataset_name}}
+
 # Retrain the model
 retrain dataset_name="forest" update-type="ind_0.2": install
     uv run src/dvine_copula_recursive_dynamic_v2.py --data_split train --dataset_name {{dataset_name}} \
