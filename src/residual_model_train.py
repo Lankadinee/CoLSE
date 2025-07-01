@@ -10,6 +10,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from loguru import logger
 from torch.utils.data import DataLoader
+from rich.console import Console
+from rich.table import Table
 
 from colse.data_path import get_log_path, get_model_path
 from colse.error_comp_model import ErrorCompModel
@@ -25,14 +27,13 @@ from colse.res_utils import decode_label
 from default_args import Args
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-NUM_THREADS = int(os.environ.get("CPU_NUM_THREADS", os.cpu_count()))
+NUM_THREADS = int(os.environ.get("CPU_NUM_THREADS", f"{os.cpu_count()}"))
 current_dir = Path(__file__).resolve().parent
 iso_time_str = pd.Timestamp.now().isoformat()
 LOG_ROOT = get_log_path()
 
 
 logger = logger
-args = None
 
 
 iso_time_str = pd.Timestamp.now().isoformat()
@@ -283,6 +284,13 @@ def train_lw_nn(output_model_path, pretrained_model_path, seed=42):
     logger.info(
         f"Model saved to {output_model_path}, best valid: {state['valid_error']}"
     )
+    table = Table(title=f"Model - {output_model_path}")
+    table.add_column("Metric", justify="right")
+    table.add_column("Value", justify="right")
+    for key, value in state['valid_error']['workload'].items():
+        table.add_row(key, f"{value:.4f}")
+    console = Console()
+    console.print(table)
 
 
 def parse_args():
