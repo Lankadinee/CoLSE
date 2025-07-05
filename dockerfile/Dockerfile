@@ -41,8 +41,8 @@ RUN git clone https://github.com/Nathaniel-Han/pg_hint_plan /root/pg_hint_plan \
     && make PG_CONFIG=/usr/local/pgsql/13.1/bin/pg_config  \
     && make PG_CONFIG=/usr/local/pgsql/13.1/bin/pg_config install
 
-ENV PATH $PATH:/usr/local/pgsql/13.1/bin
-ENV LD_LIBRARY_PATH $LD_LIBRARY_PATH:/usr/local/pgsql/13.1/lib/
+ENV PATH=$PATH:/usr/local/pgsql/13.1/bin
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/pgsql/13.1/lib/
 
 RUN set -eux \
 	&& groupadd -r postgres --gid=999 \

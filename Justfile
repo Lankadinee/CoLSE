@@ -48,7 +48,7 @@ train_test dataset_name="forest": install
     just train {{dataset_name}}
     just test {{dataset_name}}
 
-# Retrain the model
+# Retrain the residual model
 retrain dataset_name="forest" update-type="ind_0.2": install
     uv run src/dvine_copula_recursive_dynamic_v2.py --data_split train --dataset_name {{dataset_name}} \
     --output_excel_name dvine_v1_{{dataset_name}}_train_sample_retrained_{{update-type}}.xlsx \
@@ -58,19 +58,19 @@ retrain dataset_name="forest" update-type="ind_0.2": install
     --train_excel_path data/excels/dvine_v1_{{dataset_name}}_train_sample_retrained_{{update-type}}.xlsx --epochs 10 \
     --pretrained_model_name "error_comp_model.pt" --output_model_name "error_comp_model_retrained_{{update-type}}.pt" --update_type {{update-type}}
 
-# Test the retrained model
+# Test with the updated copula model & residual model
 retest dataset_name="forest" update-type="ind_0.2": install
     uv run src/dvine_copula_recursive_dynamic_v2.py --data_split test --dataset_name {{dataset_name}} \
     --output_excel_name dvine_v1_{{dataset_name}}_test_sample_retrained_{{update-type}}.xlsx --model_name "error_comp_model_retrained_{{update-type}}.pt" \
     --theta_cache_path "theta_cache_{{update-type}}.pkl" --cdf_cache_name "cdf_cache_{{update-type}}.pkl" --update_type {{update-type}}
 
-# Test with the existing model
+# Test with the existing copula model & residual model
 test-existing dataset_name="forest" update-type="ind_0.2": install
     uv run src/dvine_copula_recursive_dynamic_v2.py --data_split test --dataset_name {{dataset_name}} \
     --output_excel_name dvine_v1_{{dataset_name}}_test_sample_{{update-type}}.xlsx --model_name "error_comp_model.pt" \
     --theta_cache_path "theta_cache.pkl" --cdf_cache_name "cdf_cache.pkl" --update_type {{update-type}}
 
-# Test with the updated model
+# Test with the updated copula model & existing residual model
 test-updated dataset_name="forest" update-type="ind_0.2": install
     uv run src/dvine_copula_recursive_dynamic_v2.py --data_split test --dataset_name {{dataset_name}} \
     --output_excel_name dvine_v1_{{dataset_name}}_test_sample_updated_{{update-type}}.xlsx --model_name "error_comp_model.pt" \
@@ -79,7 +79,31 @@ test-updated dataset_name="forest" update-type="ind_0.2": install
 # Run all the commands
 all: install download train test
 
+# Run the prerequisites script
+prepare-data dataset_name="forest" model_name="dvine" update_type="ind_0.2": install
+    uv run scripts/py/prerequisists.py {{dataset_name}} {{model_name}} {{update_type}}
+
+# Build the postgres docker images
+build-postgres:
+    make docker
+
+# Run the postgres docker images
+run-postgres dataset_name="dmv" update_type="ind_0.2":
+    make docker_run DATABASE_NAME={{dataset_name}}_{{update_type}}
+    make copy_estimations DATABASE_NAME={{dataset_name}}_{{update_type}} 
+    make set_docker_permissions DATABASE_NAME={{dataset_name}}_{{update_type}}
+    make create_db DATABASE_NAME={{dataset_name}}_{{update_type}}
+
+# Get accuracy for all estimations
+get-accuracy dataset_name="dmv" update_type="ind_0.2":
+    make test_all_files DATABASE_NAME={{dataset_name}}_{{update_type}}
+
+# Calculate the p-error
+calculate-p-error dataset_name="dmv" update_type="ind_0.2":
+    make p_error DATABASE_NAME={{dataset_name}}_{{update_type}}
+
 # clear the cache
+[confirm]
 clear:
     rm -rf data/cdf_cache
     rm -rf data/theta_cache

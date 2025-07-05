@@ -33,11 +33,13 @@ stop_all_containers:
 
 # Run this command to build the docker image
 docker:
-	@tar cvf postgres-13.1.tar.gz postgresql-13.1
-	@mv postgres-13.1.tar.gz dockerfile/
+	unzip -q data/postgresql-13.1.zip
+	tar cf postgres-13.1.tar.gz postgresql-13.1
+	mv postgres-13.1.tar.gz dockerfile/
+	rm -rf postgresql-13.1/
 	@sleep 1
-	@cd dockerfile && docker build -t $(IMAGE_NAME) .
-	@rm -rf postgres-13.1.tar.gz
+	cd dockerfile && docker build -t $(IMAGE_NAME) --network=host .
+	rm -rf postgres-13.1.tar.gz
 
 docker_run:
 	echo "Starting docker"
@@ -78,7 +80,7 @@ remove_header:
 	uv run scripts/py/remove_header.py --source_dir workloads/$(DATABASE_NAME)/estimates
 
 # Run this command to initialize the database
-init: execute_permission stop_all_containers docker_run remove_header create_db  
+init: execute_permission stop_all_containers docker_run remove_header copy_estimations set_docker_permissions create_db  
 
 test_one_file:
 	uv run scripts/py/send_query.py --database_name $(DATABASE_NAME) --container_name $(CONTAINER_NAME) --filename $(TEST_FILENAME) 2>&1 | tee -a $(DATABASE_NAME)_test.log
@@ -94,8 +96,8 @@ test_all: stop_all_containers start_container create_venv test_all_files
 # Run this command to calculate the p-error
 p_error:
 	uv run scripts/py/p_error_calculation.py --database_name $(DATABASE_NAME)
-	mkdir -p scripts/plan_cost/$(DATABASE_NAME)/results
-	mv scripts/plan_cost/$(DATABASE_NAME)/*.txt scripts/plan_cost/$(DATABASE_NAME)/results/
+	# mkdir -p scripts/plan_cost/$(DATABASE_NAME)/results
+	# mv scripts/plan_cost/$(DATABASE_NAME)/*.txt scripts/plan_cost/$(DATABASE_NAME)/results/
 
 plogs:
 	@docker exec $(CONTAINER_NAME) cat /var/lib/pgsql/13.1/data/custom_log_file.txt

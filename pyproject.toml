@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "coolname>=2.2.0",
+    "docopt>=0.6.2",
     "loguru>=0.7.3",
     "numpy>=2.2.6",
     "openpyxl>=3.1.5",
