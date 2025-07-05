@@ -1,29 +1,26 @@
 """
-Problem statement:
+Prerequisites script for dataset preparation.
 
-PPNB - 1
+Usage:
+    prerequisists.py <dataset_name> <model_name> <update_type>
+    prerequisists.py --help
 
-Queries for each dataset - Colse
-SRC  - colse/data/{dataset_name(general)}/query.json
-SRC (SP)  - colse/data/{dataset_name(general)}/data_updates/query_{update-type}.json
-DEST - workloads/{dataset_name}/{dataset_name}.sql
+Arguments:
+    dataset_name    Name of the dataset to process
+    model_name      Name of the model to use
+    update_type     Type of update to apply
 
-prediction txt for each dataset for each method <- Colse + ACE
-Same name, not very strict
-SRC  - 	colse/excels/dvine_v1_{dataset_name(general)}_test_sample_{update-type}.xlsx
-		ACE/output/result/{dataet_name*}/{update-type}_existing/updated_model/
-DEST - workloads/{dataset_name}/estimates/{model_name}.csv
+Options:
+    -h, --help      Show this help message and exit
 
-original datasets - Colse
-SRC - colse/data/{dataset_name}/(original_name)
-DEST - single_table_datasets/{dataset_name}/{dataset_name}_{update-type}.csv
-
-folder structure
-
-Solution - Write a python script in Colse to move all the files to relevent location
-
+Examples:
+    prerequisists.py imdb dvine insert
+    prerequisists.py tpch ace delete
 """
 
+import sys
+from docopt import docopt
+from remove_header import remove_header_if_exists
 
 from enum import Enum
 from pathlib import Path
@@ -39,6 +36,7 @@ from py_utils import csv_to_estimates_csv, excel_to_estimates_csv, json_file_to_
 from glob import glob
 from rich.console import Console
 from rich.table import Table
+
 
 class TypeOfRetrain(str, Enum):
     NONE = ""
@@ -59,13 +57,22 @@ def get_file_size_in_mb(file_path: Path) -> str:
         return f"{file_path.stat().st_size / (1024 * 1024):.3f}"  # Convert bytes to MB
     return "N/A"
 
+
 class Prerequisists:
+    """
+    This class is used to create the prerequisists for the dataset.
+    It will create the queries, predictions, original dataset, and true cardinality.
+    It will also create the directories for the dataset.
+    """
+
     EXTERNAL_PRED_PATH = Path("/datadrive500/AreCELearnedYet")
-    def __init__(self, dataset_name: DatasetNames, up_wl_type: UpdateTypes | WorkloadTypes, model_name: ModelNames):
-        self.dataset_name = DatasetNames(dataset_name) if dataset_name in DatasetNames else None
-        self.model_name = ModelNames(model_name) if model_name in ModelNames else None
-        self.update_type = UpdateTypes(up_wl_type) if up_wl_type in UpdateTypes else None
-        self.workload_type = WorkloadTypes(up_wl_type) if up_wl_type in WorkloadTypes else None
+    def __init__(self, dataset_name: str, model_name: str, up_wl_type: str):
+
+        self.dataset_name: DatasetNames = DatasetNames(dataset_name)
+        self.model_name: ModelNames = ModelNames(model_name)
+
+        self.update_type: UpdateTypes = UpdateTypes(up_wl_type) if isinstance(up_wl_type, str) and up_wl_type in UpdateTypes else None
+        self.workload_type: WorkloadTypes = WorkloadTypes(up_wl_type) if isinstance(up_wl_type, str) and up_wl_type in WorkloadTypes else None
         self.list_of_retrained_models = []
 
         # query paths
@@ -182,11 +189,11 @@ class Prerequisists:
             table.add_row("Prediction", f"source-{index + 1}", str(prediction_path_source), f"{get_file_size_in_mb(prediction_path_source)}", "True")
             table.add_row("Prediction", f"destination-{index + 1}", str(prediction_path_destination), f"{get_file_size_in_mb(prediction_path_destination)}", f"{prediction_path_destination.exists()}")
         
+        self.no_of_rows = self.get_dataset_no_of_rows()
         
         console = Console()
         console.print(table)
         
-        self.no_of_rows = self.get_dataset_no_of_rows()
 
     def create_all_directories(self):
         all_destination_directories = [self.query_sql_file.parent, self.original_dataset_path_destination.parent, self.true_cardinality_path_destination.parent] + [f.parent for f in self.prediction_paths_destination]
@@ -211,19 +218,33 @@ class Prerequisists:
             raise ValueError(f"You cannot have same type of retrain - {self.prediction_paths_source}")
         return type_of_rt
         
+
     def create_queries(self):
+        """
+        Create the queries for the dataset.
+        """
         ret = json_file_to_sql_file(self.query_json_file_source, self.query_sql_file, self.dataset_name)
         assert ret, "Failed to create queries"
 
+
     def copy_predictions(self):
+        """
+        Copy the predictions for the dataset.
+        """
         for prediction_path_source, prediction_path_destination in zip(self.prediction_paths_source, self.prediction_paths_destination):
             if self.model_name.is_ours():
                 ret = excel_to_estimates_csv(prediction_path_source, prediction_path_destination, no_of_rows=self.no_of_rows)
             else:
                 ret = csv_to_estimates_csv(prediction_path_source, prediction_path_destination, no_of_rows=self.no_of_rows)
+            
+            remove_header_if_exists(prediction_path_destination.as_posix())
             assert ret, "Failed to copy predictions"
     
+
     def copy_original_dataset(self):
+        """
+        Copy the original dataset for the dataset.
+        """
         if self.original_dataset_path_source.suffix == ".csv":
             shutil.copy(self.original_dataset_path_source, self.original_dataset_path_destination)
         else:
@@ -231,9 +252,17 @@ class Prerequisists:
             save_dataframe(df, self.original_dataset_path_destination)
     
     def copy_true_cardinality(self):
+        """
+        Copy the true cardinality for the dataset.
+        """
         shutil.copy(self.true_cardinality_path_source, self.true_cardinality_path_destination)
+        remove_header_if_exists(self.true_cardinality_path_destination.as_posix())
+
 
     def execute(self, user_input: bool = False):
+        """
+        Execute the prerequisites for the dataset.
+        """
         logger.info(f"Creating queries for {self.dataset_name} with {self.model_name} and {self.update_type}")
         # confirm with user input
         if user_input and input(f"Are you sure you want to create queries for {self.dataset_name} with {self.model_name} and {self.update_type}? (y/n): ") != "y":
@@ -250,7 +279,8 @@ class Prerequisists:
         logger.info("Copying true cardinality")
         self.copy_true_cardinality()
 
-if __name__ == "__main__":
+
+def main():
     # param_list = []
     # for dataset_name in DatasetNames:
     #     for model_name in ModelNames:
@@ -262,7 +292,7 @@ if __name__ == "__main__":
 
     # load last index from file
     try:
-        with open("last_index.txt", "r") as f:
+        with open("last_index.txt", "r", encoding="utf-8") as f:
             last_index = int(f.read().strip())
     except FileNotFoundError:
         last_index = 0
@@ -272,7 +302,7 @@ if __name__ == "__main__":
     df = pd.read_csv("param_list.csv", header=None)
     # for index, row in df.iterrows():
     for index, row in df.iloc[last_index:].iterrows():
-        # try:
+        # try:  
         dataset_name, model_name, update_type = row
         prerequisists = Prerequisists(dataset_name, update_type, model_name)
         prerequisists.execute(user_input=True)
@@ -280,8 +310,25 @@ if __name__ == "__main__":
         #     logger.error(f"Error for {dataset_name} with {update_type} and {model_name}: {e}")
         
         # save last index to a file
-        with open("last_index.txt", "w") as f:
+        with open("last_index.txt", "w", encoding="utf-8") as f:
             f.write(str(index))
         logger.info(f"Completed for {dataset_name} with {update_type} and {model_name}")
         logger.info(f"Last index saved: {index}")
     logger.info("All done!")
+
+
+
+
+
+if __name__ == "__main__":
+    args = docopt(__doc__)
+    
+    _dataset_name = args['<dataset_name>']
+    _model_name = args['<model_name>']
+    _update_type = args['<update_type>']
+    
+    # Create prerequisites instance and execute
+    prerequisists = Prerequisists(_dataset_name, _model_name, _update_type)
+    prerequisists.execute(user_input=True)
+
+    # main()
