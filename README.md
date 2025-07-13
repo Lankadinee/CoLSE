@@ -58,3 +58,20 @@ just all
 ```
 This will sequentially download data, train the model, and test it.
 
+## Check accuracy using no of optimnal query plans
+
+### Prepare the data for the run
+
+```
+just prepare-data <dataset_name> <model_name> <update_type>
+```
+
+ex: just prepare-data dmv dvine ind_0.2
+
+
+### Build docker images
+
+```
+just build-postgres
+```
+
