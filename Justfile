@@ -68,12 +68,14 @@ retrain dataset_name="forest" update-type="ind_0.2": install
     # --output_excel_name dvine_v1_{{dataset_name}}_eval_sample_retrained_{{update-type}}.xlsx \
     # --theta_cache_path "theta_cache_{{update-type}}.pkl" --cdf_cache_name "cdf_cache_{{update-type}}.pkl" --update_type {{update-type}}
 
+
     # uv run src/residual_model_test.py --dataset_name {{dataset_name}} \
     # --train_excel_path data/excels/dvine_v1_{{dataset_name}}_train_sample_retrained_{{update-type}}.xlsx \
     # --test_excel_path data/excels/dvine_v1_{{dataset_name}}_eval_sample_retrained_{{update-type}}.xlsx \
     # --pretrained_model_name "error_comp_model_retrained_{{update-type}}.pt" --update_type {{update-type}}
 
 # --freeze_layer_count 1 --lr 0.0001 --tolerance 0.01
+
 # Test with the updated copula model & residual model
 retest dataset_name="forest" update-type="ind_0.2": install
     uv run src/dvine_copula_recursive_dynamic_v2.py --data_split test --dataset_name {{dataset_name}} \
@@ -84,6 +86,7 @@ retest dataset_name="forest" update-type="ind_0.2": install
 retrain_test dataset_name="forest" update-type="ind_0.2": install
     just retrain {{dataset_name}} {{update-type}}
     just retest {{dataset_name}} {{update-type}}
+
 
 # Test with the existing copula model & residual model
 test-existing dataset_name="forest" update-type="ind_0.2": install
@@ -101,7 +104,9 @@ test-updated dataset_name="forest" update-type="ind_0.2": install
 all: install download train test
 
 # Run the prerequisites script
+
 prepare-data dataset_name="forest" model_name="dvine" update_type="ind_0.2": install env
+
     uv run scripts/py/prerequisists.py {{dataset_name}} {{model_name}} {{update_type}}
 
 # Build the postgres docker images
@@ -148,6 +153,7 @@ run-postgres-performance dataset_name="dmv" update_type="":
     just run-postgres {{dataset_name}} {{update_type}}
     just get-accuracy {{dataset_name}} {{update_type}}
     just calculate-p-error {{dataset_name}} {{update_type}}
+
 
 # clear the cache
 [confirm]
