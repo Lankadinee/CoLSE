@@ -29,11 +29,15 @@ iso_time_str = iso_time_str.replace(":", "-")
 logs_dir = get_log_path()
 pp_enb = True
 logger.add(
-    logs_dir.joinpath(f"training-{iso_time_str}.log"),
-    rotation="1 MB",
+    logs_dir.joinpath(f"colse-{iso_time_str}.log"),
+    rotation="10 MB",
     level="DEBUG",
 )
 SHOW_DEBUG_INFO = False
+# Set a global random seed for reproducibility
+SEED = 42
+np.random.seed(SEED)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -177,6 +181,7 @@ def main():
     no_of_rows = df.shape[0]
     min_values_list = df.min().values
     max_values_list = df.max().values
+    logger.info(f"No of rows: {no_of_rows}")
     logger.info(f"Columns: {df.columns}")
 
     new_query_l = []
@@ -189,9 +194,15 @@ def main():
 
     # query_size = 100 # TODO: Remove this
     if parsed_args.update_type and data_split == "train":
-        new_query_l = query_l[:8000]
-        new_query_r = query_r[:8000]
-        actual_ce = actual_ce_ds[:8000]
+        # new_query_l = query_l[:8000]
+        # new_query_r = query_r[:8000]
+        # actual_ce = actual_ce_ds[:8000]
+
+        no_of_rows = 8000
+        idx = np.random.choice(len(query_l), no_of_rows, replace=False)
+        new_query_l = query_l[idx]
+        new_query_r = query_r[idx]
+        actual_ce = actual_ce_ds[idx]
     else:
         new_query_l = query_l
         new_query_r = query_r

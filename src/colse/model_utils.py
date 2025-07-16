@@ -122,10 +122,18 @@ def get_actual_cardinality(pred, y_bar):
     )
     valid_preds_sign[(positive_sign < 0) * (negative_sign < 0)] = 0
 
-    valid_preds = np.maximum(
-        np.round(decode_label(pred_np[:, 2])), 0.0
-    ) * valid_preds_sign + np.maximum(np.round(decode_label(y_bar_np)), 0.0)
-    return valid_preds
+    # This is the old logic
+    # valid_preds = np.maximum(
+    #     np.round(decode_label(pred_np[:, 2])), 0.0
+    # ) * valid_preds_sign + np.maximum(np.round(decode_label(y_bar_np)), 0.0)
+    # return valid_preds
+
+    # This is the new logic
+    pred_label = np.maximum(np.round(decode_label(pred_np[:, 2])), 0.0)
+    y_bar_label = np.maximum(np.round(decode_label(y_bar_np)), 0.0)
+    valid_preds = pred_label * valid_preds_sign + y_bar_label
+    # valid_preds = np.round(decode_label(pred_np[:, 2])) * valid_preds_sign + np.round(decode_label(y_bar_np))
+    return np.maximum(valid_preds, 0.0)
 
 
 def calculate_class_weights(labels):

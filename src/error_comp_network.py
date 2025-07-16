@@ -35,6 +35,8 @@ class ErrorCompensationNetwork:
         # TODO: Store these three values in the model state dict in the training stage
         self.max_values = dataset.scaler.data_max_
         self.min_values = dataset.scaler.data_min_
+        logger.info(f"Errcompnet Max values: {self.max_values}")
+        logger.info(f"Errcompnet Min values: {self.min_values}")
         self.no_of_rows = dataset.no_of_rows
         # Prepare double indices for normalization
         indices = np.arange(len(self.min_values) * 2) // 2
@@ -42,6 +44,7 @@ class ErrorCompensationNetwork:
         self.diff = self.max_values - self.min_values
         self.diff_double = self.diff[indices]
         self.diff_double[self.diff_double == 0] = 1
+        logger.info(f"Errcompnet Diff double: {self.diff_double}")
 
     def report_model(self, blacklist=None):
         ps = []
@@ -65,6 +68,7 @@ class ErrorCompensationNetwork:
             # logger.debug(f"self.min_values_double: {self.min_values_double}")
             # logger.debug(f"self.diff_double: {self.diff_double}")
             norm_q = (q_np - self.min_values_double) / self.diff_double
+            # norm_q = q_np
 
             # norm_q = (query - self.min_values) / self.diff
             norm_q[norm_q == -np.inf] = 0
@@ -79,7 +83,7 @@ class ErrorCompensationNetwork:
             y_bar_log = encode_label(y_bar_ranged * self.no_of_rows)
 
             # Concatenate normalized query, AVI, and y_bar for model input
-            x = np.concatenate([norm_q.flatten(), [avi_card_log], [y_bar_log]])
+            x = np.concatenate([norm_q.flatten(), [y_bar_log], [avi_card_log]])
 
             # return torch.tensor(x, dtype=torch.float32).to(DEVICE)
             return torch.tensor(x, dtype=torch.float32).to(DEVICE)
