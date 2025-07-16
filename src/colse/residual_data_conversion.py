@@ -37,8 +37,8 @@ class DataConversion:
 
     def __init__(self, dataset_name: DatasetNames, df_param_obj: DataConversionParamValues):
         self.dataset_name = dataset_name
-        self.max_values = df_param_obj.max_values
-        self.min_values = df_param_obj.min_values
+        self.max_values = np.array(df_param_obj.max_values)
+        self.min_values = np.array(df_param_obj.min_values)
         self.no_of_rows = df_param_obj.no_of_rows
 
     def convert(self, excel_file_path, use_cache=True):
@@ -79,11 +79,28 @@ class DataConversion:
         gt = df["gt"].to_numpy()
         y = np.log2(gt + 1)
         q_error = df["q_error"].to_numpy()
-        diff = [
-            (self.max_values[i] - self.min_values[i])
-            for i in range(len(self.max_values))
-        ]
+        diff = self.max_values - self.min_values
+        logger.info(f"ResDataCon Difference Prior: {diff}")
+        # TODO - We think that there are no constant values in the dataset
+        # If there are, we need to handle them explicitly.
+        # Explicitly handle constant features:
+
+        # diff = self.max_values - self.min_values
+        # constant_features = diff == 0
+
+        # if np.any(constant_features):
+        #     logger.warning(f"Found constant features at indices: {np.where(constant_features)[0]}")
+        #     diff[constant_features] = 1  # Or handle separately
+
+        # # Later during normalization:
+        # normalized = (array - self.min_values) / diff
+        # normalized[:, constant_features] = 0  # Force constant features to zero
+        
         diff[diff == 0] = 1
+        logger.info(f"ResDataCon Min values: {self.min_values}")
+        logger.info(f"ResDataCon Max values: {self.max_values}")
+        logger.info(f"ResDataCon Difference: {diff}")
+
 
         normalized_query = []
         query_shape = None

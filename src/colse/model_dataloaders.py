@@ -36,7 +36,8 @@ def make_dataset(dataset, num=-1):
 
 def load_lw_dataset(args):
     excel_path_train = args.train_excel_path
-    excel_path_valid = args.test_excel_path
+    excel_path_test = args.test_excel_path
+    excel_path_valid = args.valid_excel_path
     dataset_type = DatasetNames(args.dataset_name)
 
     update_type = args.update_type if args.update_type else None
@@ -53,10 +54,17 @@ def load_lw_dataset(args):
     dataset = {}
     dataset["train"] = (x[:train_size], y[:train_size], gt[:train_size], "train")
     if excel_path_valid is None:
+        logger.info("No validation dataset provided, splitting train dataset")
         dataset["valid"] = (x[train_size:], y[train_size:], gt[train_size:], "valid")
     else:
-        logger.info("Loading validation dataset")
+        logger.info(f"Loading validation dataset from - {excel_path_valid}")
         rd_valid = dc.convert(excel_path_valid, use_cache=False)
         x_valid, y_valid, gt_valid = convert_to_residual(rd_valid)
         dataset["valid"] = (x_valid, y_valid, gt_valid, "valid")
+
+    if excel_path_test:
+        logger.info(f"Loading test dataset from - {excel_path_test}")
+        rd_test = dc.convert(excel_path_test, use_cache=False)
+        x_test, y_test, gt_test = convert_to_residual(rd_test)
+        dataset["test"] = (x_test, y_test, gt_test, "test")
     return dataset

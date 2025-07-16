@@ -16,13 +16,14 @@ class Args:
         self.dropout_prob = None
         self.output_len = 3
         self.train_test_split = 0.8
+        self.step_epochs = 10
+        self.freeze_layer_count = 0
 
         self.train_excel_path = (
             get_data_path() / "excels/dvine_v1_forest_train_sample_auto_max_25000.xlsx"
         )
-        self.test_excel_path = (
-            get_data_path() / "excels/dvine_v1_forest_test_sample.xlsx"
-        )
+        self.test_excel_path = None
+        self.valid_excel_path = None
 
         # overwrite parameters from user
         self.__dict__.update(kwargs)
@@ -46,6 +47,9 @@ class Args:
             "dropout_prob": self.dropout_prob,
             "output_len": self.output_len,
             "train_test_split": self.train_test_split,
+            "step_epochs": self.step_epochs,
+            "freeze_layer_count": self.freeze_layer_count,
+            "tolerance": self.tolerance,
         }
     
     def show_args(self):

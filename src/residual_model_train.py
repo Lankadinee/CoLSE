@@ -43,7 +43,9 @@ iso_time_str = iso_time_str.replace(":", "-")
 def show_metrics(metrics, **kwargs):
     from rich.console import Console
     from rich.table import Table
-    table = Table(title="Metrics")
+
+    name = kwargs.pop("name", "Metrics")
+    table = Table(title=name)
     table.add_column("Metric", justify="right")
     table.add_column("Median", justify="right")
     table.add_column("90th", justify="right")
@@ -53,7 +55,7 @@ def show_metrics(metrics, **kwargs):
     value_list = [f"{metrics['median']:.2f}", f"{metrics['90th']:.2f}", f"{metrics['95th']:.2f}", f"{metrics['99th']:.2f}", f"{metrics['max']:.2f}"]
     for key, value in kwargs.items():
         table.add_column(key, justify="right")
-        value_list.append(f"{value:.2f}")
+        value_list.append(f"{value:.2f}") if not isinstance(value, str) else value_list.append(value)
     table.add_row("Value", *value_list)
     console = Console()
     console.print(table)
@@ -74,6 +76,7 @@ def train_lw_nn(output_model_path, pretrained_model_path, seed=42):
         args.hid_units,
         output_len=args.output_len,
         dropout_prob=args.dropout_prob,
+        freeze_layer_count=args.freeze_layer_count,
     ).to(DEVICE)
 
     model_size = report_model(model)
@@ -156,9 +159,18 @@ def train_lw_nn(output_model_path, pretrained_model_path, seed=42):
 
     start_stmp = time.time()
     valid_time = 0
-    tolerance = 1e-3
+    tolerance = args.tolerance
+    step_epochs = args.step_epochs
+
+    # Check which parameters are trainable
+    model.show_architecture()
+    is_trainable = model.has_trainable_parameters()
+
     for epoch in range(args.epochs):
+        combined_error_list = []
+        base_error_list = []
         train_loss = torch.tensor([])
+
         model.train()
         total_loop = len(train_loader)
         trained_loop = 0
@@ -177,18 +189,27 @@ def train_lw_nn(output_model_path, pretrained_model_path, seed=42):
             )
             base_error = batch_qerror(gt_y_bar, gt.detach().cpu().numpy())
             combined_error = batch_qerror(pred_card, gt)
-            if epoch < 10 or np.mean(combined_error) < np.mean(base_error) - tolerance:
+            combined_error_list.append(combined_error)
+            base_error_list.append(base_error)
+            is_above_tolerance = np.mean(combined_error) < (np.mean(base_error) - tolerance)
+            is_within_step_epochs = epoch < step_epochs
+            if is_within_step_epochs or is_above_tolerance:
                 """Only update the model if the combined error is less than the base error"""
-                # logger.info(f"Updating model for epoch {epoch+1}/b{batch_id}")
+                # logger.info(f"Updating model for epoch {epoch+1}/b{batch_id} | is_within_step_epochs: {is_within_step_epochs} | is_above_tolerance: {is_above_tolerance}")
                 loss = custom_loss(preds, labels, class_weights)
-                loss.backward()
-                optimizer.step()
+                if is_trainable:
+                    loss.backward()
+                    optimizer.step()
                 trained_loop += 1
 
                 train_loss = torch.cat([train_loss, loss.reshape(-1, 1).cpu()])
+        
+        m_train_combined_error = np.mean(combined_error_list)
+        m_train_base_error = np.mean(base_error_list)
         dur_min = (time.time() - start_stmp) / 60
+        loss_loop = f"{trained_loop}/{total_loop}|{trained_loop*100/total_loop:.2f}"
         logger.info(
-            f"Epoch {epoch+1}, loss: {train_loss.mean()}, {trained_loop}/{total_loop}|{trained_loop*100/total_loop:.2f} time since start: {dur_min:.1f} mins"
+            f"Epoch {epoch+1}, loss: {train_loss.mean()} | combined_error: {np.mean(combined_error_list)} | base_error: {np.mean(base_error_list)} | {loss_loop} time since start: {dur_min:.1f} mins"
         )
 
         # run.log({"epoch": epoch + 1, "train_loss": train_loss.mean()})
@@ -199,11 +220,18 @@ def train_lw_nn(output_model_path, pretrained_model_path, seed=42):
         valid_preds = torch.tensor([])
         valid_y_bar = torch.tensor([])
         valid_gts = torch.tensor([])
+
+        valid_combined_error_list = []
+        valid_base_error_list = []
         model.eval()
         for _, data in enumerate(valid_loader):
             inputs, labels, gts = data
             inputs = inputs.to(DEVICE).float()
             labels = labels.to(DEVICE).float()
+            y_bar_log = inputs[:, -args.additional_features]
+            gt_y_bar = np.maximum(
+                np.round(decode_label(y_bar_log.detach().cpu().numpy())), 0.0
+            )
 
             with torch.no_grad():
                 preds = model(inputs).reshape(-1, args.output_len)
@@ -212,10 +240,19 @@ def train_lw_nn(output_model_path, pretrained_model_path, seed=42):
                     [valid_y_bar, inputs[:, -args.additional_features].cpu()]
                 )
                 valid_gts = torch.cat([valid_gts, gts.float()])
+                v_pred_card = get_actual_cardinality(preds, y_bar_log)
 
                 # loss = mse_loss(preds, labels)
                 loss = custom_loss(preds, labels)
                 valid_loss = torch.cat([valid_loss, loss.reshape(-1, 1).cpu()])
+
+                base_error = batch_qerror(gt_y_bar, gts.detach().cpu().numpy())
+                combined_error = batch_qerror(v_pred_card, gts)
+                valid_combined_error_list.append(combined_error)
+                valid_base_error_list.append(base_error)
+
+        m_valid_combined_error = np.mean(valid_combined_error_list)
+        m_valid_base_error = np.mean(valid_base_error_list)
 
         valid_loss = valid_loss.mean()
         logger.info(f"Valid loss is {valid_loss:.4f}")
@@ -260,7 +297,18 @@ def train_lw_nn(output_model_path, pretrained_model_path, seed=42):
             torch.save(get_state(), output_model_path)
             logger.info(f"Model saved to {output_model_path}")
 
-        show_metrics(metrics, train_loss=train_loss.mean(), valid_loss=valid_loss, best_valid_loss=best_valid_loss)
+        show_metrics(
+            metrics, 
+            name=f"Metrics - Epoch {epoch+1}",
+            t_loss=train_loss.mean(), 
+            v_loss=valid_loss, 
+            bst_val=best_valid_loss,
+            v_comb_error=m_valid_combined_error,
+            v_base_error=m_valid_base_error,
+            t_comb_error=m_train_combined_error,
+            t_base_error=m_train_base_error,
+            loss_loop=loss_loop
+        )
         # """save best 50 percentile matrics"""
         # metric_name = "90th"
         # if metrics[metric_name] < best_metric:
@@ -333,6 +381,15 @@ def parse_args():
     )
     parser.add_argument(
         "--update_type", type=str, default=None, help="Type of update to the dataset"
+    )
+    parser.add_argument(
+        "--step_epochs", type=int, default=10, help="Number of epochs to update the model"
+    )
+    parser.add_argument(
+        "--freeze_layer_count", type=int, default=0, help="Number of layers to freeze"
+    )
+    parser.add_argument(
+        "--tolerance", type=float, default=0.001, help="Tolerance for the model"
     )
     return parser.parse_args()
 
