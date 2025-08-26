@@ -12,13 +12,14 @@ from tqdm import tqdm
 
 from colse.column_index import ColumnIndexProvider, ColumnIndexTypes
 from colse.copula_types import CopulaTypes
-from colse.custom_data_generator import CustomDataGen
+from colse.custom_data_generator import DS_TYPE_MAPPER, CustomDataGen
 from colse.data_conversion_params import DataConversionParams
 from colse.data_path import DataPathDir, get_data_path, get_log_path, get_model_path
 from colse.dataset_names import DatasetNames
 from colse.datasets.preprocess import preprocess_dataset
 from colse.df_utils import load_dataframe
 from colse.divine_copula_dynamic_recursive import DivineCopulaDynamicRecursive
+from colse.fanout_scaling import FanoutScaling
 from colse.q_error import qerror
 from colse.spline_dequantizer import SplineDequantizer
 from colse.theta_storage import ThetaStorage
@@ -70,10 +71,10 @@ def parse_args():
         "--output_excel_name", type=str, default=None, help="Name of the output excel file"
     )
     parser.add_argument(
-        "--theta_cache_path", type=str, default=None, help="Path to the theta cache file"
+        "--theta_cache_path", type=str, default="theta_cache.pkl", help="Path to the theta cache file"
     )
     parser.add_argument(
-        "--cdf_cache_name", type=str, default=None, help="Name of the cdf cache file"
+        "--cdf_cache_name", type=str, default="cdf_cache.pkl", help="Name of the cdf cache file"
     )
     parser.add_argument(
         "--no_of_training_queries", type=int, default=100, help="Number of training queries"
@@ -149,8 +150,11 @@ def main():
         enable_uniques_shuffling=ENABLE_DEQUANTIZER_UNIQUES_SHUFFLING
     )
     s_dequantize.fit_transform(load_dataframe(dataset_type.get_file_path(original_file_name)))
+    
+    # this will be non if there are no non-continuous columns
     dequantized_file_name = s_dequantize.get_dequantized_dataset_name()
     if dequantized_file_name:
+        # there are non-continuous columns, so we use the converted file
         datagen_load_file_name = dequantized_file_name
     else:
         datagen_load_file_name = original_file_name
@@ -175,6 +179,9 @@ def main():
 
     dc_params = DataConversionParams(dataset_type, parsed_args.update_type)
     dc_params.store_data_conversion_params(dataset)
+
+    # Fanout Scaling
+    fanout_scaling = FanoutScaling(dataset_type)
 
     if error_comp_model_path:
         error_comp_model = ErrorCompensationNetwork(error_comp_model_path, dataset)
@@ -269,6 +276,11 @@ def main():
         y_bar = model.predict(cdf_list, column_list=col_indices)
         copula_pred_time = time.time() - start_time
 
+        # handle join queries
+        y_bar = y_bar / fanout_scaling.get_value(col_indices)
+        real_tot_rows = 212.88 * 10**10
+
+        
         time_taken_list.append(copula_pred_time)
         time_taken_predict_cdf_list.append(time_taken_predict_cdf)
         
