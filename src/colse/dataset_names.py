@@ -20,6 +20,7 @@ class DatasetNames(str, Enum):
     CORRELATED_04 = "correlated_04"
     CORRELATED_06 = "correlated_06"
     CORRELATED_08 = "correlated_08"
+    IMDB_DATA = "imdb"
 
     def __str__(self):
         return self.value
@@ -49,6 +50,8 @@ class DatasetNames(str, Enum):
             dp = get_data_path(self.value) / (filename if filename else "dmv.parquet")
         elif self == DatasetNames.FOREST_DATA:
             dp = get_data_path(self.value) / (filename if filename else "forest.csv")
+        elif self == DatasetNames.IMDB_DATA:
+            dp = get_data_path(self.value) / (filename if filename else "samples_data.csv")
         elif self == DatasetNames.CENSUS_DATA:
             dp = get_data_path(self.value) / (filename if filename else "census.csv")
         elif self.is_tpch_type():
@@ -104,6 +107,16 @@ class DatasetNames(str, Enum):
                 "l_shipinstruct",
                 "l_shipmode",
             ]
+        elif self == DatasetNames.IMDB_DATA:
+            return [
+                "cast_info:role_id",
+                "movie_companies:company_id",
+                "movie_companies:company_type_id",
+                "movie_info:info_type_id",
+                "movie_keyword:keyword_id",
+                "title:kind_id",
+                "movie_info_idx:info_type_id",  
+            ]
         else:
             raise ValueError(f"Dataset {self} not supported")
 
@@ -137,5 +150,10 @@ class DatasetNames(str, Enum):
             return 15
         elif self == DatasetNames.TPCH_LINEITEM_20:
             return 15
+        elif self == DatasetNames.IMDB_DATA:
+            return 8
         else:
             raise ValueError(f"Dataset {self} not supported")
+
+    def is_join_type(self):
+        return self == DatasetNames.IMDB_DATA
