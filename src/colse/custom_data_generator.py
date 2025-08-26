@@ -37,10 +37,16 @@ from colse.datasets.dataset_tpch_lineitem import (
     generate_dataset_tpch_sf2_z1_lineitem,
     generate_dataset_tpch_sf2_z2_lineitem,
     generate_dataset_tpch_sf2_z3_lineitem,
-    generate_dataset_tpch_sf2_z4_lineitem, get_queries_tpch_lineitem_10,
-    get_queries_tpch_lineitem_20, get_queries_tpch_sf2_z1_lineitem,
-    get_queries_tpch_sf2_z2_lineitem, get_queries_tpch_sf2_z3_lineitem,
-    get_queries_tpch_sf2_z4_lineitem)
+    generate_dataset_tpch_sf2_z4_lineitem,
+    get_queries_tpch_lineitem_10,
+    get_queries_tpch_lineitem_20,
+    get_queries_tpch_sf2_z1_lineitem,
+    get_queries_tpch_sf2_z2_lineitem,
+    get_queries_tpch_sf2_z3_lineitem,
+    get_queries_tpch_sf2_z4_lineitem,
+)
+from colse.datasets.dataset_imdb import generate_dataset as generate_dataset_imdb
+from colse.datasets.dataset_imdb import get_queries_imdb
 from colse.datasets.params import ROW_PREFIX, SAMPLE_PREFIX
 from colse.datasets.query_filter import filter_queries
 from colse.transform_datasets import convert_df_to_dequantize
@@ -60,6 +66,7 @@ DS_TYPE_MAPPER = {
     DatasetNames.CORRELATED_04: generate_dataset_correlated_04,
     DatasetNames.CORRELATED_06: generate_dataset_correlated_06,
     DatasetNames.CORRELATED_08: generate_dataset_correlated_08,
+    DatasetNames.IMDB_DATA: generate_dataset_imdb,
 }
 
 QUERY_GENERATE_MAPPER = {
@@ -77,6 +84,7 @@ QUERY_GENERATE_MAPPER = {
     DatasetNames.CORRELATED_04: get_queries_correlated_04,
     DatasetNames.CORRELATED_06: get_queries_correlated_06,
     DatasetNames.CORRELATED_08: get_queries_correlated_08,
+    DatasetNames.IMDB_DATA: get_queries_imdb,
 }
 
 
