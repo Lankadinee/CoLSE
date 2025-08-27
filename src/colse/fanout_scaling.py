@@ -17,6 +17,7 @@ class FanoutScaling:
         self._total_rows = None
         self._root_table = None
         self._queried_table_columns = None
+        self._fanout_unique_values = None
 
         if self._dataset_type.is_join_type():
             self.load_data()
@@ -36,13 +37,36 @@ class FanoutScaling:
         self._total_rows = df.shape[0]
         self._root_table = "title"
         self._queried_table_columns = queried_table_columns
-
+        self._fanout_unique_values = df[ori_fanout_tables].nunique()
 
     def get_fanout_data(self):
         return self._fanout_data
 
     def get_in_data(self):
         return self._in_data
+    
+    def get_queries(self, query: np.ndarray ) -> list[np.ndarray]:
+        grouped_query = query.reshape(-1, 2)
+        # Vectorized condition without np.vectorize
+        queried_column_indexes = (grouped_query[:, 0] != -np.inf) & (grouped_query[:, 1] != np.inf)
+        queried_table_names = [self._queried_table_columns[i].split(":")[0] for i in queried_column_indexes]
+        
+        in_query = np.zeros((len(self._in_tables), 2))
+        for qtn in queried_table_names: 
+            if qtn in self._in_tables:
+                index = self._in_tables.index(qtn)
+                in_query[index, 0] = 1
+                in_query[index, 1] = 1
+
+        fanout_query_indexes = []
+        for ft in self._fanout_tables: 
+            if ft not in queried_table_names:
+                index = self._fanout_tables.index(ft)
+                fanout_query_indexes.append(index)
+
+        fanout_query = np.zeros((len(self._fanout_tables), 2))
+        # TODO: Complete the fanout query
+        return self._queried_table_columns
 
     def get_value(self, col_indices: list[int]):
         """
