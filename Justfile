@@ -36,7 +36,7 @@ install:
 train dataset_name="forest": install
     uv run src/dvine_copula_recursive_dynamic_v2.py --data_split train --dataset_name {{dataset_name}} \
     --output_excel_name dvine_v1_{{dataset_name}}_train_sample.xlsx --theta_cache_path "theta_cache.pkl" \
-    --cdf_cache_name "cdf_cache.pkl"
+    --cdf_cache_name "cdf_cache.pkl" --no_of_training_queries "0"
 
     uv run src/residual_model_train.py --dataset_name {{dataset_name}} \
     --train_excel_path data/excels/dvine_v1_{{dataset_name}}_train_sample.xlsx --epochs {{default_epochs}} --output_model_name "error_comp_model.pt"
@@ -106,7 +106,6 @@ all: install download train test
 # Run the prerequisites script
 
 prepare-data dataset_name="forest" model_name="dvine" update_type="ind_0.2": install env
-
     uv run scripts/py/prerequisists.py {{dataset_name}} {{model_name}} {{update_type}}
 
 # Build the postgres docker images
