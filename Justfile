@@ -155,6 +155,17 @@ run-postgres-performance dataset_name="dmv" update_type="":
     just calculate-p-error {{dataset_name}} {{update_type}}
 
 
+# Compute per-column query usage statistics
+query-stats dataset_name="forest" update-type="": install env
+    #! /bin/bash
+    if [ -z "{{update-type}}" ]; then
+        uv run src/query_explorer.py --dataset {{dataset_name}}
+    else
+        uv run src/query_explorer.py --dataset {{dataset_name}} --data-updates {{update-type}}
+    fi
+
+
+
 # clear the cache
 [confirm]
 clear:
