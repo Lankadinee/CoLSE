@@ -248,9 +248,10 @@ def train_lw_nn(output_model_path, pretrained_model_path, seed=42):
 
                 base_error = batch_qerror(gt_y_bar, gts.detach().cpu().numpy())
                 combined_error = batch_qerror(v_pred_card, gts)
-                valid_combined_error_list.append(combined_error)
-                valid_base_error_list.append(base_error)
+                valid_combined_error_list.extend(combined_error)
+                valid_base_error_list.extend(base_error)
 
+        print(f"Valid comb error shape: {len(valid_combined_error_list)}")
         m_valid_combined_error = np.mean(valid_combined_error_list)
         m_valid_base_error = np.mean(valid_base_error_list)
 

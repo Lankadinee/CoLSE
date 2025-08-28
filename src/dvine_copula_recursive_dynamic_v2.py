@@ -73,6 +73,9 @@ def parse_args():
     parser.add_argument(
         "--cdf_cache_name", type=str, default=None, help="Name of the cdf cache file"
     )
+    parser.add_argument(
+        "--no_of_training_queries", type=int, default=None, help="Number of training queries"
+    )
     return parser.parse_args()
 
 
@@ -207,6 +210,14 @@ def main():
         new_query_l = query_l
         new_query_r = query_r
         actual_ce = actual_ce_ds
+
+    current_no_of_rows = len(new_query_l)
+    no_of_training_queries =  parsed_args.no_of_training_queries
+    if no_of_training_queries and no_of_training_queries < current_no_of_rows:
+        new_query_l = new_query_l[:no_of_training_queries]
+        new_query_r = new_query_r[:no_of_training_queries]
+        actual_ce = actual_ce[:no_of_training_queries]
+        logger.info(f"Reducing the number of training queries from {current_no_of_rows} to {no_of_training_queries}")
 
     logger.info(f"Query Size: {len(new_query_l)}")
 
