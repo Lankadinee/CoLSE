@@ -24,3 +24,12 @@ class WorkloadTypes(str, Enum):
     
     def __str__(self):
         return self.value
+    
+class CustomUpdateTypes(str, Enum):
+    NO_OF_TRAINING_QUERIES = "notq"
+
+    def __repr__(self):
+        return self.value
+    
+    def __str__(self):
+        return self.value

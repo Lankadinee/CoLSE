@@ -33,23 +33,48 @@ install:
     uv sync
 
 # Train the model
-train dataset_name="forest": install
+train dataset_name="forest" no_of_training_queries="0": install
+    #! /bin/bash
+    # Conditionally build suffix
+    if [ "{{no_of_training_queries}}" = "0" ]; then
+        suffix=""
+    else
+        suffix="_notq_{{no_of_training_queries}}"
+    fi
     uv run src/dvine_copula_recursive_dynamic_v2.py --data_split train --dataset_name {{dataset_name}} \
-    --output_excel_name dvine_v1_{{dataset_name}}_train_sample.xlsx --theta_cache_path "theta_cache.pkl" \
-    --cdf_cache_name "cdf_cache.pkl" --no_of_training_queries "0"
+    --output_excel_name dvine_v1_{{dataset_name}}_train_sample${suffix}.xlsx --theta_cache_path "theta_cache.pkl" \
+    --cdf_cache_name "cdf_cache.pkl" --no_of_training_queries {{no_of_training_queries}}
 
     uv run src/residual_model_train.py --dataset_name {{dataset_name}} \
-    --train_excel_path data/excels/dvine_v1_{{dataset_name}}_train_sample.xlsx --epochs {{default_epochs}} --output_model_name "error_comp_model.pt"
+    --train_excel_path data/excels/{{dataset_name}}/dvine_v1_{{dataset_name}}_train_sample${suffix}.xlsx \
+    --epochs {{default_epochs}} --output_model_name "error_comp_model${suffix}.pt"
 
 # Test the model
-test dataset_name="forest": install
+test dataset_name="forest" no_of_training_queries="0": install
+    #! /bin/bash
+    if [ "{{no_of_training_queries}}" = "0" ]; then
+        suffix=""
+    else
+        suffix="_notq_{{no_of_training_queries}}"
+    fi
     uv run src/dvine_copula_recursive_dynamic_v2.py --data_split test --dataset_name {{dataset_name}} \
-    --output_excel_name dvine_v1_{{dataset_name}}_test_sample.xlsx --model_name "error_comp_model.pt" \
+    --output_excel_name dvine_v1_{{dataset_name}}_test_sample${suffix}.xlsx \
+    --model_name "error_comp_model${suffix}.pt" \
     --theta_cache_path "theta_cache.pkl" --cdf_cache_name "cdf_cache.pkl"
 
-train_test dataset_name="forest": install
-    just train {{dataset_name}}
-    just test {{dataset_name}}
+train_test dataset_name="forest" no_of_training_queries="0": install
+    just train {{dataset_name}} {{no_of_training_queries}}
+    just test {{dataset_name}} {{no_of_training_queries}}
+
+tt_list dataset_list="forest" no_of_training_queries_list="100 200 300": install
+    #! /bin/bash
+    read -ra datasets <<< "{{dataset_list}}"
+    read -ra queries <<< "{{no_of_training_queries_list}}"
+    for dataset in "${datasets[@]}"; do
+        for no_of_training_queries in "${queries[@]}"; do
+            just test "$dataset" "$no_of_training_queries"
+        done
+    done
 
 # Retrain the residual model
 retrain dataset_name="forest" update-type="ind_0.2": install
@@ -113,7 +138,7 @@ build-postgres:
     make docker
 
 # Run the postgres docker images
-run-postgres dataset_name="dmv" update_type="":
+run-postgres dataset_name="forest" update_type="":
     #! /bin/bash
     if [ -z "{{update_type}}" ]; then
         db_name="{{dataset_name}}"
@@ -128,7 +153,7 @@ run-postgres dataset_name="dmv" update_type="":
     make create_db DATABASE_NAME=$db_name
 
 # Get accuracy for all estimations
-get-accuracy dataset_name="dmv" update_type="":
+get-accuracy dataset_name="forest" update_type="":
     #! /bin/bash
     if [ -z "{{update_type}}" ]; then
         db_name="{{dataset_name}}"
@@ -138,7 +163,7 @@ get-accuracy dataset_name="dmv" update_type="":
     make test_all_files DATABASE_NAME=$db_name
 
 # Calculate the p-error
-calculate-p-error dataset_name="dmv" update_type="":
+calculate-p-error dataset_name="forest" update_type="":
     #! /bin/bash
     if [ -z "{{update_type}}" ]; then
         db_name="{{dataset_name}}"
@@ -148,7 +173,7 @@ calculate-p-error dataset_name="dmv" update_type="":
     make p_error DATABASE_NAME=$db_name
 
 # Run the performance script
-run-postgres-performance dataset_name="dmv" update_type="":
+run-postgres-performance dataset_name="forest" update_type="":
     just run-postgres {{dataset_name}} {{update_type}}
     just get-accuracy {{dataset_name}} {{update_type}}
     just calculate-p-error {{dataset_name}} {{update_type}}

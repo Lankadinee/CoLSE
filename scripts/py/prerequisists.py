@@ -31,7 +31,7 @@ from colse.data_path import get_data_path
 from colse.dataset_names import DatasetNames
 from colse.df_utils import load_dataframe, save_dataframe
 from colse.model_names import ModelNames
-from colse.update_type import UpdateTypes, WorkloadTypes
+from colse.update_type import CustomUpdateTypes, UpdateTypes, WorkloadTypes
 from py_utils import csv_to_estimates_csv, excel_to_estimates_csv, json_file_to_sql_file
 from glob import glob
 from rich.console import Console
@@ -73,6 +73,11 @@ class Prerequisists:
 
         self.update_type: UpdateTypes = UpdateTypes(up_wl_type) if isinstance(up_wl_type, str) and up_wl_type in UpdateTypes else None
         self.workload_type: WorkloadTypes = WorkloadTypes(up_wl_type) if isinstance(up_wl_type, str) and up_wl_type in WorkloadTypes else None
+        self.custom_update_type: CustomUpdateTypes = CustomUpdateTypes(up_wl_type) if isinstance(up_wl_type, str) and up_wl_type in CustomUpdateTypes else None
+
+        logger.info(f"Custom update type: {self.custom_update_type} model name: {self.model_name.is_ours()}")
+        assert not(self.custom_update_type and not self.model_name.is_ours()), f"Custom update type[{self.custom_update_type}] is only supported for our model"
+
         self.list_of_retrained_models = []
 
         # query paths
@@ -100,11 +105,13 @@ class Prerequisists:
             elif self.workload_type:
                 pattern = str(CURRENT_DIR / f"data/excels/*{self.dataset_name}_test_sample_*{self.workload_type}*")
                 self.prediction_paths_source = [Path(p) for p in glob(pattern)]
-                # no_of_predictions = len(self.prediction_paths_source)
-                # assert no_of_predictions < 4, f"You cannot have more than 4 predictions for our model got [{no_of_predictions}]s - {self.prediction_paths_source}"
                 self.prediction_paths_destination = [Path(f"workloads/{self.dataset_name}_{self.workload_type}/estimates/{self.model_name.name.lower()}.csv")  for pp in self.prediction_paths_source]
+            elif self.custom_update_type:
+                pattern = str(CURRENT_DIR / f"data/excels/{self.dataset_name}/*{self.dataset_name}_test_sample_*{self.custom_update_type}*")
+                self.prediction_paths_source = [Path(p) for p in glob(pattern)]
+                self.prediction_paths_destination = [Path(f"workloads/{self.dataset_name}/estimates/{pp.stem}.csv")  for pp in self.prediction_paths_source]
             else:
-                self.prediction_paths_source = [CURRENT_DIR / f"data/excels/dvine_v1_{self.dataset_name}_test_sample.xlsx"]
+                self.prediction_paths_source = [CURRENT_DIR / f"data/excels/{self.dataset_name}/dvine_v1_{self.dataset_name}_test_sample.xlsx"]
                 self.prediction_paths_destination = [CURRENT_DIR / Path(f"workloads/{self.dataset_name}/estimates/{self.model_name.name.lower()}.csv")]
         else:
             # self.prediction_path = Prerequisists.EXTERNAL_PRED_PATH /  f"/output/result/{self.dataset_name}/{self.update_type}_existing/updated_model/"
@@ -131,7 +138,7 @@ class Prerequisists:
 
         # if prediction paths are empty, raise an error
         if not self.prediction_paths_source:
-            raise ValueError(f"No predictions found for {self.dataset_name} with {self.model_name} and {self.update_type}")
+            raise ValueError(f"No predictions found for {self.dataset_name} with {self.model_name} and {self.update_type} and {self.workload_type} and {self.custom_update_type}")
         
         for prediction_path in self.prediction_paths_source:
             if not prediction_path.exists():
@@ -329,6 +336,6 @@ if __name__ == "__main__":
     
     # Create prerequisites instance and execute
     prerequisists = Prerequisists(_dataset_name, _model_name, _update_type)
-    prerequisists.execute(user_input=True)
+    prerequisists.execute(user_input=False)
 
     # main()

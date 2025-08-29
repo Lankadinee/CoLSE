@@ -189,8 +189,8 @@ def train_lw_nn(output_model_path, pretrained_model_path, seed=42):
             )
             base_error = batch_qerror(gt_y_bar, gt.detach().cpu().numpy())
             combined_error = batch_qerror(pred_card, gt)
-            combined_error_list.append(combined_error)
-            base_error_list.append(base_error)
+            combined_error_list.extend(combined_error)
+            base_error_list.extend(base_error)
             is_above_tolerance = np.mean(combined_error) < (np.mean(base_error) - tolerance)
             is_within_step_epochs = epoch < step_epochs
             if is_within_step_epochs or is_above_tolerance:
