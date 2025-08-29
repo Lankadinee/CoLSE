@@ -43,7 +43,7 @@ train dataset_name="forest" no_of_training_queries="0": install
     fi
     uv run src/dvine_copula_recursive_dynamic_v2.py --data_split train --dataset_name {{dataset_name}} \
     --output_excel_name dvine_v1_{{dataset_name}}_train_sample${suffix}.xlsx --theta_cache_path "theta_cache.pkl" \
-    --cdf_cache_name "cdf_cache.pkl" --no_of_training_queries {{no_of_training_queries}}
+    --cdf_cache_name "cdf_cache.pkl" --no_of_training_queries {{no_of_training_queries}} --sparcity 1.0
 
     uv run src/residual_model_train.py --dataset_name {{dataset_name}} \
     --train_excel_path data/excels/{{dataset_name}}/dvine_v1_{{dataset_name}}_train_sample${suffix}.xlsx \

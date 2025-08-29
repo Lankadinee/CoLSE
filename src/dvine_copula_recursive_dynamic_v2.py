@@ -76,6 +76,9 @@ def parse_args():
     parser.add_argument(
         "--no_of_training_queries", type=int, default=None, help="Number of training queries"
     )
+    parser.add_argument(
+        "--sparcity", type=float, default=1.0, help="Sparcity of the queries"
+    )
     return parser.parse_args()
 
 
@@ -191,9 +194,10 @@ def main():
     new_query_r = []
     actual_ce = []
 
-    query_l = dataset.query_l[:, COLUMN_INDEXES]
-    query_r = dataset.query_r[:, COLUMN_INDEXES]
-    actual_ce_ds = dataset.true_card
+    # query_l = dataset.query_l[:, COLUMN_INDEXES]
+    # query_r = dataset.query_r[:, COLUMN_INDEXES]
+    # actual_ce_ds = dataset.true_card
+    query_l, query_r, actual_ce_ds = dataset.get_queries(sparcity=parsed_args.sparcity)
 
     # query_size = 100 # TODO: Remove this
     if parsed_args.update_type and data_split == "train":
