@@ -54,13 +54,32 @@ def _print_split_stats(split_name: str, col_counts: Counter, num_queries: int) -
         print(f"{col.ljust(max_col_len)}  {str(count).rjust(5)}  {pct:10.2f}%")
 
 
+def _print_num_cols_distribution(split_name: str, num_cols_counter: Counter, num_queries: int) -> None:
+    print(f"\n=== Split: {split_name} (num columns per query) ===")
+    if num_queries == 0:
+        print("(no queries)")
+        return
+
+    # Sort by number of columns ascending
+    sorted_items = sorted(num_cols_counter.items(), key=lambda kv: kv[0])
+
+    header_col = "#Columns"
+    print(f"{header_col:>9}  Count  % of queries")
+    print(f"{'-' * 9}  {'-' * 5}  {'-' * 12}")
+    for num_cols, count in sorted_items:
+        pct = (count / num_queries) * 100.0
+        print(f"{str(num_cols):>9}  {str(count).rjust(5)}  {pct:10.2f}%")
+
+
 def process(dataset_name: str, data_updates: Optional[str] = None):
     query_json = load_query(dataset_name, data_updates)
 
     split_to_counts: Dict[str, Counter] = {}
+    split_to_num_cols_dist: Dict[str, Counter] = {}
 
     for split, queries in query_json.items():
         counts: Counter = Counter()
+        num_cols_counter: Counter = Counter()
         for q in tqdm(queries, desc=f"Processing {split}"):
             # Each entry appears to be a list where the first element is a dict of column conditions
             cols_source = None
@@ -71,15 +90,23 @@ def process(dataset_name: str, data_updates: Optional[str] = None):
 
             if not isinstance(cols_source, dict):
                 continue
-
+            
+            no_of_query_columns = 0
             for col_name in cols_source.keys():
-                counts[col_name] += 0 if cols_source[col_name] is None else 1
+                if cols_source[col_name] is not None:
+                    no_of_query_columns += 1
+                    counts[col_name] += 1
+            # Track distribution of number of columns per query
+            num_cols_counter[no_of_query_columns] += 1
 
         split_to_counts[split] = counts
+        split_to_num_cols_dist[split] = num_cols_counter
 
     # Pretty print stats per split
     for split, counts in split_to_counts.items():
-        _print_split_stats(split, counts, num_queries=len(query_json.get(split, [])))
+        num_queries = len(query_json.get(split, []))
+        _print_split_stats(split, counts, num_queries=num_queries)
+        _print_num_cols_distribution(split, split_to_num_cols_dist[split], num_queries=num_queries)
 
     return split_to_counts
 
@@ -88,6 +115,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Compute per-column query usage statistics")
     parser.add_argument("--dataset", type=str, default="forest", help="Dataset name, e.g., forest")
     parser.add_argument("--data-updates", type=str, default=None, help="Optional data updates key, e.g., ind_0.2")
+    parser.add_argument("--show-num-cols-dist", action="store_true", help="Also print distribution of number of columns per query")
+    
     args = parser.parse_args()
 
     process(args.dataset, args.data_updates)
