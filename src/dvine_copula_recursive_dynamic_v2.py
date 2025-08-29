@@ -120,7 +120,7 @@ def main():
         
     logger.info(f"Error compensation model loaded: {error_comp_model is not None}")
 
-    excel_file_path = get_data_path(DataPathDir.EXCELS) / f"{parsed_args.output_excel_name}"
+    excel_file_path = get_data_path(f"{DataPathDir.EXCELS}/{dataset_type.value}") / f"{parsed_args.output_excel_name}"
     COPULA_TYPE = CopulaTypes.GUMBEL
     theta_cache_path = get_data_path(DataPathDir.THETA_CACHE, dataset_type.value) / f"{parsed_args.theta_cache_path}"
     

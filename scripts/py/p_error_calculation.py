@@ -129,7 +129,7 @@ def calculate_p_error_for_db(database_name, csv_file_path="scripts/plan_cost"):
         return -1
     
     files = list(dir_path.glob("*true_card_cost.xlsx"))
-    assert len(files) == 1
+    assert len(files) == 1, f"Expected 1 true cost file, got {len(files)} - {files}"
     true_cost_file_path = files[0]
 
     all_dict_list = []
