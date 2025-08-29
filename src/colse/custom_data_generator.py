@@ -200,6 +200,31 @@ class CustomDataGen:
             f"Dataset {self.dataset_type} generated with {self.no_of_rows} rows and {self.no_of_queries} samples"
         )
 
+    def get_queries(self, sparcity: float = 1.0):
+        """
+        Get queries with sparcity
+        """
+        if sparcity >= 1:
+            return self.query_l, self.query_r, self.true_card
+        else:
+            # get query col counts for each query index
+            no_of_cols = self.query_l.shape[1]
+            query_lb = self.query_l == -np.inf
+            query_ub = self.query_r == np.inf
+            query_col_counts = np.multiply(query_lb, query_ub).sum(axis=1)
+            keep_indexes = []
+            for i in range(1, no_of_cols + 1):
+                current_col_indexes = np.where(query_col_counts == i)[0]
+                current_col_count = len(current_col_indexes)
+                projected_col_count = int(current_col_count * (sparcity ** i))
+                logger.info(f"No of cols: {i} current_col_count: {current_col_count} projected_col_count: {projected_col_count}")
+                if projected_col_count < current_col_count:
+                    keep_indexes.extend(current_col_indexes[:projected_col_count])
+                else:
+                    keep_indexes.extend(current_col_indexes)
+            return self.query_l[keep_indexes], self.query_r[keep_indexes], self.true_card[keep_indexes]
+
+
     def filter_queries_by_cols(self, columns: List[int]):
         query_l = self.query_l[columns]
         query_r = self.query_r[columns]
@@ -423,11 +448,17 @@ class CustomDataGen:
 
 
 if __name__ == "__main__":
+    dataset_type = DatasetNames.FOREST_DATA 
     cd_obj = CustomDataGen(
-        no_of_rows=None, no_of_queries=None, dataset_type=DatasetNames.FOREST_DATA
+        no_of_rows=None, no_of_queries=None, dataset_type=dataset_type, 
+        data_file_name=dataset_type.get_file_path(),
     )
     logger.info("Generating range queries")
     logger.info(f"Sample count: {cd_obj.query_l.shape[0]} | {cd_obj.no_of_queries}")
+
+    query_l, query_r, true_card = cd_obj.get_queries(sparcity=0.9)
+    print(query_l.shape, query_r.shape, true_card.shape)
+
     # print(cd_obj.query_l.shape)
     # for lb, ub, card in zip(cd_obj.query_l, cd_obj.query_r, cd_obj.true_card):
     #     # print(lb, ub, card)
