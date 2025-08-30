@@ -10,6 +10,7 @@ from rich.console import Console
 from rich.table import Table
 from tqdm import tqdm
 
+from colse.column_index import ColumnIndexProvider, ColumnIndexTypes
 from colse.copula_types import CopulaTypes
 from colse.custom_data_generator import CustomDataGen
 from colse.data_conversion_params import DataConversionParams
@@ -47,7 +48,7 @@ def parse_args():
         "--data_split", type=str, default="train", help="Path to the testing Excel file"
     )
     parser.add_argument(
-        "--dataset_name", type=str, default="tpch_sf2_z4_lineitem", help="Name of the dataset"
+        "--dataset_name", type=str, default="forest", help="Name of the dataset"
     )
     parser.add_argument(
         "--max_unique_values",
@@ -74,7 +75,7 @@ def parse_args():
         "--cdf_cache_name", type=str, default=None, help="Name of the cdf cache file"
     )
     parser.add_argument(
-        "--no_of_training_queries", type=int, default=None, help="Number of training queries"
+        "--no_of_training_queries", type=int, default=100, help="Number of training queries"
     )
     parser.add_argument(
         "--sparcity", type=float, default=1.0, help="Sparcity of the queries"
@@ -250,6 +251,7 @@ def main():
         data_np, cache_name=theta_cache_path
     )
 
+    col_index_provider = ColumnIndexProvider(df, ColumnIndexTypes.PMUTINFO_SKIP_ORDERING)
     model = DivineCopulaDynamicRecursive(theta_dict=theta_dict)
 
     # model.verbose = True
@@ -262,29 +264,17 @@ def main():
     loop = tqdm(zip(X, y), total=X.shape[0])
     for query, y_act in loop:
         query = query.reshape(1, -1)
-        # start_time_cdf = time.time()
+        
         start_time_predict_cdf = time.time()
-        # print(query)
         original_cdf_list = s_dequantize.get_converted_cdf(query, COLUMN_INDEXES)
-        
         time_taken_predict_cdf = time.time() - start_time_predict_cdf
-        # time_taken_cdf = time.time() - start_time_cdf
-        # Reshape the array into pairs
-        reshaped_cdf_list = original_cdf_list.reshape(-1, 2)
-        # Identifying the indexes where the first value is not equal to 0 and the second value is not equal to 1
-        non_zero_non_one_indices = np.where(
-            (reshaped_cdf_list[:, 0] != 0) | (reshaped_cdf_list[:, 1] != 1)
-        )[0]
-        
-
-        col_indices = [i + 1 for i in non_zero_non_one_indices]
-        cdf_list = reshaped_cdf_list[non_zero_non_one_indices].reshape(-1)
 
         # logger.info(f"Query [{query.shape}]: {query}")
         # logger.info(f"Original CDF [{original_cdf_list.shape}]: {original_cdf_list}")
         # logger.info(f"Query Modified [{query_modified.shape}]: {query_modified}")
         # logger.info(f"CDF [{cdf_list.shape}]: {cdf_list}")
 
+        col_indices, cdf_list = col_index_provider.get_column_index(original_cdf_list)
         no_of_cols_for_this_query = len(col_indices)
         loop.set_description(f"#cols: {no_of_cols_for_this_query:2d}")
         start_time = time.time()
@@ -321,7 +311,7 @@ def main():
 
         #####################################################
         if SHOW_DEBUG_INFO:
-            query_modified = query.reshape(-1,2)[non_zero_non_one_indices]    
+            # query_modified = query.reshape(-1,2)[non_zero_non_one_indices]    
             table = Table(title="Debug Info")
             table.add_column("Item", justify="right")
             table.add_column("Shape", justify="right")
@@ -329,7 +319,7 @@ def main():
 
             table.add_row("Query", f"{query.shape}", f"{query}")
             table.add_row("Original CDF", f"{original_cdf_list.shape}", f"{original_cdf_list.round(3)}")
-            table.add_row("Modified Query", f"{query_modified.shape}", f"{query_modified}")
+            # table.add_row("Modified Query", f"{query_modified.shape}", f"{query_modified}")
             table.add_row("CDF", f"{cdf_list.shape}", f"{cdf_list}")
             table.add_row("Mapped Query", f"{mapped_query.shape}", f"{mapped_query}")
             table.add_row("Y Bar", f"{y_bar.shape}", f"{y_bar}")
