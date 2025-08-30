@@ -10,11 +10,13 @@ import psycopg2
 from get_list_of_files import get_all_input_files, get_all_unprocessed_txt_files
 from loguru import logger
 from tqdm import tqdm
-
+from rich.console import Console
+from rich.table import Table
 from colse_enums import get_common_database_name
 
 RUN_ESTIMATES = True
 RETRY_CONNECTION_WHEN_FAILED = False
+EXECUTE_ANALYZE = True
 
 
 current_dir = Path(__file__).resolve().parent
@@ -130,7 +132,10 @@ def run_one_file(database_name: str, cardest_filename: str):
         scan_type = []
         # sql_txt = "EXPLAIN (FORMAT JSON)SELECT COUNT(*) FROM forest;"
         # EXPLAIN (FORMAT JSON)SELECT COUNT(*) FROM badges as b, users as u WHERE b.UserId= u.Id AND u.UpVotes>=0;
-        sql_txt = "EXPLAIN (FORMAT JSON) " + query.split("\n")[0]
+        if EXECUTE_ANALYZE:
+            sql_txt = "EXPLAIN (ANALYZE, FORMAT JSON) " + query.split("\n")[0]
+        else:
+            sql_txt = "EXPLAIN (FORMAT JSON) " + query.split("\n")[0]
         # cursor.execute(sql_txt)
         # res = cursor.fetchall()
         # logger.info(f"Executing {no}-th query: {sql_txt}")
@@ -160,63 +165,85 @@ def run_one_file(database_name: str, cardest_filename: str):
                 logger.info("Retrying... ", retry_count)
                 time.sleep(3)
                 continue
-        # logger.info(res)
         res_json = res[0][0][0]
-        total_cost = res_json["Plan"]["Total Cost"]
-        # query_total_time = res_json["Execution Time"] + res_json["Planning Time"]
-        scan_type.append(res_json["Plan"]["Node Type"])
-        plans = res_json["Plan"].get("Plans", [])
-        if plans:
-            scan_type.append(plans[0]["Node Type"])
-        rows = res_json["Plan"]["Plan Rows"]
 
-        if RUN_ESTIMATES:
-            dict_list.append(
-                {
-                    "index": no,
-                    "total_cost_estimates": total_cost,
-                    "access_path": scan_type,
-                    "input_card_est": rows,
-                    "no_queried_columns": no_cols[0],
-                    # "query_total_time": query_total_time,
-                    # "query_execution_time": res_json["Execution Time"],
-                    # "query_planning_time": res_json["Planning Time"],
-                    "query": query.split("\n")[0]
-                }
-            )
+        if EXECUTE_ANALYZE:
+            query_execution_time = res_json["Execution Time"]
+            query_planning_time = res_json["Planning Time"]
+            query_total_time = query_execution_time + query_planning_time
+            dict_list.append({
+                "index": no,
+                "query_total_time": query_total_time,
+                "query_execution_time": query_execution_time,
+                "query_planning_time": query_planning_time,
+                "query": query.split("\n")[0]
+            })
         else:
-            dict_list.append(
-                {"total_cost_true": total_cost, 
-                 "access_path": scan_type}
-            )
+            total_cost = res_json["Plan"]["Total Cost"]
+            scan_type.append(res_json["Plan"]["Node Type"])
+            plans = res_json["Plan"].get("Plans", [])
+            if plans:
+                scan_type.append(plans[0]["Node Type"])
+            rows = res_json["Plan"]["Plan Rows"]
+
+            if RUN_ESTIMATES:
+                dict_list.append(
+                    {
+                        "index": no,
+                        "total_cost_estimates": total_cost,
+                        "access_path": scan_type,
+                        "input_card_est": rows,
+                        "no_queried_columns": no_cols[0],
+                        "query": query.split("\n")[0]
+                    }
+                )
+            else:
+                dict_list.append(
+                    {"total_cost_true": total_cost, 
+                    "access_path": scan_type}
+                )
 
     logger.info("Used estimates from ", cardest_filename)
     df = pd.DataFrame(dict_list)
     logger.info(f"df: {df.head()}")
 
-    # logger.info(f"export_filepath: {export_filepath}")
-    # if export_filepath.exists():
-    #     df_file = pd.read_excel(export_filepath)
-    #     df = pd.concat([df_file, df], axis=1)
-
-    """Write to a csv file"""
-    logger.info(f"export_filepath: {export_filepath}")
-    df.to_excel(export_filepath.as_posix(), index=False)
-
     cursor.close()
     conn.close()
 
     # Show stats
-    logger.info("Total number of queries: ", len(queries))
-    logger.info("Total number of queries processed: ", len(df))
+    total_queries = len(queries)
+    logger.info(f"Total number of queries: {total_queries}")
+    logger.info(f"Total number of queries processed: {len(df)}")
 
+    if EXECUTE_ANALYZE:
+        # show max, min and average of query_total_time
+        logger.info(f"Max query total time: {df['query_total_time'].max()}")
+        logger.info(f"Min query total time: {df['query_total_time'].min()}")
+        logger.info(f"Average query total time: {df['query_total_time'].mean()}")
+
+        export_filepath = export_dirpath / f'{cardest_filename.split(".")[0] + "_cost_analyze.xlsx"}'
+    
+    """Write to a csv file"""
+    logger.info(f"export_filepath: {export_filepath}")
+    df.to_excel(export_filepath.as_posix(), index=False)
 
     # Show unique access paths
+    if EXECUTE_ANALYZE:
+        return 
+    
     unique_access_paths_counts = df["access_path"].value_counts()
 
-    logger.info("Table Scan type\tCount")
+    console = Console()
+    table = Table(title="Access Path Counts")
+    table.add_column("Table Scan Type", style="cyan", no_wrap=True)
+    table.add_column("Count", style="magenta")
+    table.add_column("Percentage", style="green")
+
     for path, count in unique_access_paths_counts.items():
-        logger.info(f"{path}\t: {count}")
+        table.add_row(",".join(path), str(count), f"{count / total_queries * 100:.2f}%")
+
+    console.print(table)
+    
 
 def test():
     # Test the function with a sample dataset
