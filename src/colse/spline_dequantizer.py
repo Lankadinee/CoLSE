@@ -53,7 +53,8 @@ class SplineDequantizer:
         self, dataset_type: DatasetNames,
         m: int = 10000,
         cache_name: str | None = None,
-        output_file_name: str | None = None
+        output_file_name: str | None = None,
+        enable_uniques_shuffling: bool = False
     ):
         """
         Parameters
@@ -87,6 +88,8 @@ class SplineDequantizer:
         self._dequantized_dataset_path = (
             get_data_path(dataset_type.value) / self._out_file_name
         )
+
+        self.enable_uniques_shuffling = enable_uniques_shuffling
 
     def get_dequantized_dataset_name(self):
         """ Get the name of the dequantized dataset """
@@ -154,7 +157,21 @@ class SplineDequantizer:
             K = len(uniques)
             # logger.info(f"Uniques shape: {uniques.shape}")
             # logger.info(f"K: {K}")
-            mapping = {val: idx for idx, val in enumerate(uniques)}
+            # Here I'm going to shuffle the unique values and remap the codes to the shuffled unique values, codes should be mapped from initial unique values to shuffled unique values
+            # Current uniques - Index(['?', 'Federal-gov', 'Local-gov', 'Never-worked', 'Private', 'Self-emp-inc', 'Self-emp-not-inc', 'State-gov', 'Without-pay'],      dtype='object')
+
+            if self.enable_uniques_shuffling:
+                # Shuffle the unique values
+                shuffled_uniques = np.random.permutation(uniques)
+                mapping = {val: idx for idx, val in enumerate(shuffled_uniques)}
+                # Remap the codes to the shuffled unique values
+                lookup = np.array([np.where(shuffled_uniques == val)[0][0] for val in uniques])
+                logger.info(f"Random mapping: {' | '.join([f'{uniques[i]}: {i} -> {lookup[i]}' for i in range(len(uniques))])}")
+                codes = lookup[codes]
+            else:
+                mapping = {val: idx for idx, val in enumerate(uniques)}
+
+            # Map the unique values to indices
             N = len(codes)
             counts = np.bincount(codes, minlength=K)
             p = counts.astype(np.float64) / float(N)

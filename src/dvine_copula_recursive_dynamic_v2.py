@@ -38,6 +38,7 @@ SHOW_DEBUG_INFO = False
 # Set a global random seed for reproducibility
 SEED = 42
 np.random.seed(SEED)
+ENABLE_DEQUANTIZER_UNIQUES_SHUFFLING = False
 
 
 def parse_args():
@@ -151,7 +152,8 @@ def main():
     s_dequantize = SplineDequantizer(
         dataset_type=dataset_type,
         cache_name=parsed_args.cdf_cache_name,
-        output_file_name=output_file_name
+        output_file_name=output_file_name,
+        enable_uniques_shuffling=ENABLE_DEQUANTIZER_UNIQUES_SHUFFLING
     )
     s_dequantize.fit_transform(load_dataframe(dataset_type.get_file_path(original_file_name)))
     dequantized_file_name = s_dequantize.get_dequantized_dataset_name()
