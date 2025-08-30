@@ -36,8 +36,19 @@ def mutinfo_ordering(df, method="MutInfo"):
     Returns:
     - list of ordered column names
     """
+    logger.info(f"Starting {method} ordering...")
     # get 10% of the dataframe
-    df = df.sample(frac=0.1)
+    no_of_rows = df.shape[0]
+    MAX_SAMPLE_SIZE = 20_000
+    SAMPLE_FRAC_SIZE = 0.1
+
+    if MAX_SAMPLE_SIZE < no_of_rows * SAMPLE_FRAC_SIZE:
+        df = df.sample(n=MAX_SAMPLE_SIZE, random_state=1, replace=False)
+        txt = f"Sampling {MAX_SAMPLE_SIZE} rows"
+    else:
+        df = df.sample(frac=SAMPLE_FRAC_SIZE)
+        txt = f"Sampling {SAMPLE_FRAC_SIZE}% of the dataframe"
+    logger.info(f"{txt}: {df.shape}")
     # df.to_excel("mtinfo_input.xlsx")
     df_encoded = encode_dataframe(df)
     cols = df_encoded.columns.tolist()
