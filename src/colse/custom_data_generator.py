@@ -13,56 +13,44 @@ from tqdm import tqdm
 
 from colse.data_path import get_data_path
 from colse.dataset_names import DatasetNames
-from colse.datasets.dataset_census import generate_dataset as generate_dataset_census
+from colse.datasets.dataset_census import \
+    generate_dataset as generate_dataset_census
 from colse.datasets.dataset_census import get_queries_census
 from colse.datasets.dataset_correlated_02 import (
-    generate_dataset_correlated_02,
-    get_queries_correlated_02,
-)
+    generate_dataset_correlated_02, get_queries_correlated_02)
 from colse.datasets.dataset_correlated_04 import (
-    generate_dataset_correlated_04,
-    get_queries_correlated_04,
-)
+    generate_dataset_correlated_04, get_queries_correlated_04)
 from colse.datasets.dataset_correlated_06 import (
-    generate_dataset_correlated_06,
-    get_queries_correlated_06,
-)
+    generate_dataset_correlated_06, get_queries_correlated_06)
 from colse.datasets.dataset_correlated_08 import (
-    generate_dataset_correlated_08,
-    get_queries_correlated_08,
-)
+    generate_dataset_correlated_08, get_queries_correlated_08)
 from colse.datasets.dataset_dmv import generate_dataset as generate_dataset_dmv
 from colse.datasets.dataset_dmv import get_queries_dmv
-from colse.datasets.dataset_forest import generate_dataset as generate_dataset_forest
+from colse.datasets.dataset_forest import \
+    generate_dataset as generate_dataset_forest
 from colse.datasets.dataset_forest import get_queries_forest
 from colse.datasets.dataset_gas import generate_dataset as generate_dataset_gas
 from colse.datasets.dataset_gas import get_queries
-from colse.datasets.dataset_power import generate_dataset as generate_dataset_power
+from colse.datasets.dataset_power import \
+    generate_dataset as generate_dataset_power
 from colse.datasets.dataset_power import get_queries_power
 from colse.datasets.dataset_tpch_lineitem import (
-    generate_dataset_tpch_lineitem_10,
-    generate_dataset_tpch_lineitem_20,
+    generate_dataset_tpch_lineitem_10, generate_dataset_tpch_lineitem_20,
     generate_dataset_tpch_sf2_z0_lineitem,
     generate_dataset_tpch_sf2_z1_lineitem,
     generate_dataset_tpch_sf2_z2_lineitem,
     generate_dataset_tpch_sf2_z3_lineitem,
-    generate_dataset_tpch_sf2_z4_lineitem,
-    get_queries_tpch_lineitem_10,
-    get_queries_tpch_lineitem_20,
-    get_queries_tpch_sf2_z0_lineitem,
-    get_queries_tpch_sf2_z1_lineitem,
-    get_queries_tpch_sf2_z2_lineitem,
-    get_queries_tpch_sf2_z3_lineitem,
-    get_queries_tpch_sf2_z4_lineitem,
-)
+    generate_dataset_tpch_sf2_z4_lineitem, get_queries_tpch_lineitem_10,
+    get_queries_tpch_lineitem_20, get_queries_tpch_sf2_z0_lineitem,
+    get_queries_tpch_sf2_z1_lineitem, get_queries_tpch_sf2_z2_lineitem,
+    get_queries_tpch_sf2_z3_lineitem, get_queries_tpch_sf2_z4_lineitem)
 from colse.datasets.dataset_v1 import generate_dataset as generate_dataset_v1
 from colse.datasets.dataset_v2 import generate_dataset as generate_dataset_v2
 from colse.datasets.dataset_v3 import generate_dataset as generate_dataset_v3
 from colse.datasets.params import ROW_PREFIX, SAMPLE_PREFIX
 from colse.datasets.query_filter import filter_queries
-from colse.datasets.variable_dataset import (
-    generate_dataset as generate_dataset_variable,
-)
+from colse.datasets.variable_dataset import \
+    generate_dataset as generate_dataset_variable
 from colse.transform_datasets import convert_df_to_dequantize
 
 DS_TYPE_MAPPER = {
@@ -98,6 +86,7 @@ QUERY_GENERATE_MAPPER = {
     DatasetNames.CORRELATED_06: get_queries_correlated_06,
     DatasetNames.CORRELATED_08: get_queries_correlated_08,
 }
+
 
 def none_class():
     return None
@@ -192,6 +181,7 @@ class CustomDataGen:
             self.df = self.generate_dataset(df=df)
             logger.info(f"Loaded custom data generator from {self.datagen_name.name}")
         else:
+            logger.info(f"Generating dataset from {self.data_file_name}")
             self.df = self.generate_dataset()
             self.no_of_queries = self.generate_queries(is_range_queries)
             self.save(self.datagen_name) if CustomDataGen.LOAD_FROM_CACHE else None
@@ -202,28 +192,61 @@ class CustomDataGen:
 
     def get_queries(self, sparcity: float = 1.0):
         """
-        Get queries with sparcity
+        Get queries with sparcity control.
+
+        Args:
+            sparcity (float): Controls the density of queries to return.
+                             Values >= 1.0 return all queries.
+                             Values < 1.0 apply sparsity filtering.
+
+        Returns:
+            tuple: (query_l, query_r, true_card) - filtered query bounds and cardinalities
         """
+        # If sparcity >= 1, return all queries without filtering
         if sparcity >= 1:
             return self.query_l, self.query_r, self.true_card
         else:
-            # get query col counts for each query index
+            # Get the number of columns in the query data
             no_of_cols = self.query_l.shape[1]
-            query_lb = self.query_l == -np.inf
-            query_ub = self.query_r == np.inf
-            query_col_counts = np.multiply(query_lb, query_ub).sum(axis=1)
+
+            # Create boolean masks for queries that have valid lower bounds and upper bounds
+            query_lb_with_value = (self.query_l != -np.inf) & (self.query_l != "-inf")
+            query_ub_with_value = (self.query_r != np.inf) & (self.query_r != "inf")
+
+            # Count how many columns have both valid lower and upper bounds for each query
+            query_cols_with_values_counts = np.multiply(
+                query_lb_with_value, query_ub_with_value
+            ).sum(axis=1)
+
+            # List to store indices of queries to keep after sparsity filtering
             keep_indexes = []
+
+            # Process queries by their complexity (number of constrained columns)
             for i in range(1, no_of_cols + 1):
-                current_col_indexes = np.where(query_col_counts == i)[0]
+                # Find all queries that have exactly 'i' constrained columns
+                current_col_indexes = np.where(query_cols_with_values_counts == i)[0]
                 current_col_count = len(current_col_indexes)
-                projected_col_count = int(current_col_count * (sparcity ** i))
-                logger.info(f"No of cols: {i} current_col_count: {current_col_count} projected_col_count: {projected_col_count}")
+
+                # Calculate how many queries to keep based on sparcity
+                # More complex queries (higher i) are reduced more aggressively
+                projected_col_count = int(current_col_count * (sparcity**i))
+
+                logger.info(
+                    f"No of cols: {i} current_col_count: {current_col_count} projected_col_count: {projected_col_count}"
+                )
+
+                # If we need to reduce the number of queries for this complexity level
                 if projected_col_count < current_col_count:
                     keep_indexes.extend(current_col_indexes[:projected_col_count])
                 else:
                     keep_indexes.extend(current_col_indexes)
-            return self.query_l[keep_indexes], self.query_r[keep_indexes], self.true_card[keep_indexes]
 
+            # Return filtered query data using the selected indices
+            return (
+                self.query_l[keep_indexes],
+                self.query_r[keep_indexes],
+                self.true_card[keep_indexes],
+            )
 
     def filter_queries_by_cols(self, columns: List[int]):
         query_l = self.query_l[columns]
@@ -448,9 +471,11 @@ class CustomDataGen:
 
 
 if __name__ == "__main__":
-    dataset_type = DatasetNames.FOREST_DATA 
+    dataset_type = DatasetNames.FOREST_DATA
     cd_obj = CustomDataGen(
-        no_of_rows=None, no_of_queries=None, dataset_type=dataset_type, 
+        no_of_rows=None,
+        no_of_queries=None,
+        dataset_type=dataset_type,
         data_file_name=dataset_type.get_file_path(),
     )
     logger.info("Generating range queries")
