@@ -29,28 +29,20 @@ from colse.datasets.dataset_dmv import get_queries_dmv
 from colse.datasets.dataset_forest import \
     generate_dataset as generate_dataset_forest
 from colse.datasets.dataset_forest import get_queries_forest
-from colse.datasets.dataset_gas import generate_dataset as generate_dataset_gas
-from colse.datasets.dataset_gas import get_queries
 from colse.datasets.dataset_power import \
     generate_dataset as generate_dataset_power
 from colse.datasets.dataset_power import get_queries_power
 from colse.datasets.dataset_tpch_lineitem import (
     generate_dataset_tpch_lineitem_10, generate_dataset_tpch_lineitem_20,
-    generate_dataset_tpch_sf2_z0_lineitem,
     generate_dataset_tpch_sf2_z1_lineitem,
     generate_dataset_tpch_sf2_z2_lineitem,
     generate_dataset_tpch_sf2_z3_lineitem,
     generate_dataset_tpch_sf2_z4_lineitem, get_queries_tpch_lineitem_10,
-    get_queries_tpch_lineitem_20, get_queries_tpch_sf2_z0_lineitem,
-    get_queries_tpch_sf2_z1_lineitem, get_queries_tpch_sf2_z2_lineitem,
-    get_queries_tpch_sf2_z3_lineitem, get_queries_tpch_sf2_z4_lineitem)
-from colse.datasets.dataset_v1 import generate_dataset as generate_dataset_v1
-from colse.datasets.dataset_v2 import generate_dataset as generate_dataset_v2
-from colse.datasets.dataset_v3 import generate_dataset as generate_dataset_v3
+    get_queries_tpch_lineitem_20, get_queries_tpch_sf2_z1_lineitem,
+    get_queries_tpch_sf2_z2_lineitem, get_queries_tpch_sf2_z3_lineitem,
+    get_queries_tpch_sf2_z4_lineitem)
 from colse.datasets.params import ROW_PREFIX, SAMPLE_PREFIX
 from colse.datasets.query_filter import filter_queries
-from colse.datasets.variable_dataset import \
-    generate_dataset as generate_dataset_variable
 from colse.transform_datasets import convert_df_to_dequantize
 
 DS_TYPE_MAPPER = {
@@ -483,6 +475,17 @@ if __name__ == "__main__":
 
     query_l, query_r, true_card = cd_obj.get_queries(sparcity=0.9)
     print(query_l.shape, query_r.shape, true_card.shape)
+
+    # print(cd_obj.query_l.shape)
+    # for lb, ub, card in zip(cd_obj.query_l, cd_obj.query_r, cd_obj.true_card):
+    #     # print(lb, ub, card)
+    #     actual = cd_obj.actual_cdf(lb, ub)
+    #     print(actual, card)
+    #     assert actual == card
+    # groups = cd_obj.get_values(group=[1, 2, 3])
+    # print(groups.shape)
+    # sample_data = cd_obj.get_sample_values(group=[1, 2, 3])
+    # print(sample_data.shape)
 
     # print(cd_obj.query_l.shape)
     # for lb, ub, card in zip(cd_obj.query_l, cd_obj.query_r, cd_obj.true_card):

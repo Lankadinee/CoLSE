@@ -128,13 +128,6 @@ def main():
     excel_file_path = get_data_path(f"{DataPathDir.EXCELS}/{dataset_type.value}") / f"{parsed_args.output_excel_name}"
     COPULA_TYPE = CopulaTypes.GUMBEL
     theta_cache_path = get_data_path(DataPathDir.THETA_CACHE, dataset_type.value) / f"{parsed_args.theta_cache_path}"
-    
-    max_unique_values = (
-        int(parsed_args.max_unique_values)
-        if parsed_args.max_unique_values != "auto"
-        else "auto"
-    )
-
 
     # Dequantize dataset
     if parsed_args.update_type:
@@ -188,8 +181,6 @@ def main():
 
     df = dataset.df
     no_of_rows = df.shape[0]
-    min_values_list = df.min().values
-    max_values_list = df.max().values
     logger.info(f"No of rows: {no_of_rows}")
     logger.info(f"Columns: {df.columns}")
 
@@ -361,7 +352,7 @@ def main():
     dict_list = []
     percentiles_values = [50, 90, 95, 99, 100]
     logger.info("-" * 40)
-    logger.info(f"Percentiles for q_error")
+    logger.info("Percentiles for q_error")
     table = Table(title="Dequantizer Test")
     table.add_column("Percentile", justify="right")
     table.add_column("copula", justify="right")
