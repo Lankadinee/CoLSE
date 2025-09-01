@@ -202,12 +202,7 @@ def main():
     # actual_ce_ds = dataset.true_card
     query_l, query_r, actual_ce_ds = dataset.get_queries(sparcity=parsed_args.sparcity)
 
-    # query_size = 100 # TODO: Remove this
     if parsed_args.update_type and data_split == "train":
-        # new_query_l = query_l[:8000]
-        # new_query_r = query_r[:8000]
-        # actual_ce = actual_ce_ds[:8000]
-
         no_of_rows = 8000
         idx = np.random.choice(len(query_l), no_of_rows, replace=False)
         new_query_l = query_l[idx]
@@ -253,7 +248,7 @@ def main():
         data_np, cache_name=theta_cache_path
     )
 
-    col_index_provider = ColumnIndexProvider(df, ColumnIndexTypes.PMUTINFO_SKIP_ORDERING)
+    col_index_provider = ColumnIndexProvider(df, ColumnIndexTypes.NATURAL_SKIP_ORDERING)
     model = DivineCopulaDynamicRecursive(theta_dict=theta_dict)
 
     # model.verbose = True
