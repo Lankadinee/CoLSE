@@ -6,6 +6,8 @@ def qerror(est_card, card, no_of_rows=None):
         est_card = est_card * no_of_rows
         est_card = max(est_card, 1)
         card = card * no_of_rows
+    if card > 1:
+        pass
     else:
         est_card = np.clip(est_card, 0, 1)
 

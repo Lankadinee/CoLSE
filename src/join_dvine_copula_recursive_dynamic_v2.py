@@ -16,6 +16,7 @@ from colse.custom_data_generator import CustomDataGen
 from colse.data_conversion_params import DataConversionParams
 from colse.data_path import DataPathDir, get_data_path, get_log_path, get_model_path
 from colse.dataset_names import DatasetNames
+from colse.datasets.dataset_custom_join import get_queries_custom_join
 from colse.datasets.dataset_imdb import get_queries_imdb
 from colse.datasets.preprocess import preprocess_dataset
 from colse.df_utils import load_dataframe
@@ -44,6 +45,11 @@ SEED = 42
 np.random.seed(SEED)
 ENABLE_DEQUANTIZER_UNIQUES_SHUFFLING = False
 
+
+QUERY_FUNCTIONS = {
+    DatasetNames.IMDB_DATA: get_queries_imdb,
+    DatasetNames.CUSTOM_JOIN_DATA: get_queries_custom_join,
+}
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -107,7 +113,7 @@ def main():
     show_args(parsed_args)
     data_split = parsed_args.data_split
     dataset_type = DatasetNames(parsed_args.dataset_name)
-    assert dataset_type == DatasetNames.IMDB_DATA, "This script only supports IMDB dataset"
+    assert dataset_type.is_join_type(), "This script only supports IMDB and CUSTOM_JOIN datasets"
 
     logger.info(f"Dataset Type: {parsed_args.dataset_name} -> {dataset_type.name}")
 
@@ -193,7 +199,7 @@ def main():
 
     # new_query_l, new_query_r, actual_ce = dataset.get_queries(sparcity=parsed_args.sparcity)
 
-    new_query_l, new_query_r, actual_ce, query_joined_tables = get_queries_imdb(
+    new_query_l, new_query_r, actual_ce, query_joined_tables = QUERY_FUNCTIONS[dataset_type](
                 no_of_queries=None,
                 data_split=data_split,
                 query_file_name=query_file_name,
@@ -217,7 +223,7 @@ def main():
     y = np.array(actual_ce)
 
     
-    model = MultiDivineCopulaDynamicRecursive(ms_dequantizer=ms_dequantize)
+    model = MultiDivineCopulaDynamicRecursive(dataset_type=dataset_type, ms_dequantizer=ms_dequantize)
 
     # model.verbose = True
     full_zero_count = 0
@@ -252,7 +258,7 @@ def main():
         # time_taken_predict_cdf_list.append(time_taken_predict_cdf)
         
 
-        if np.isnan(y_bar):  # or np.isnan(y_bar_2):
+        if not isinstance(y_bar, int) and np.isnan(y_bar):  # or np.isnan(y_bar_2):
             nan_count += 1
             continue
         q_error = qerror(y_bar, y_act, no_of_rows=None)

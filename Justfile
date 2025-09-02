@@ -188,10 +188,15 @@ query-stats dataset_name="forest" update-type="": install env
         uv run src/query_explorer.py --dataset {{dataset_name}} --data-updates {{update-type}}
     fi
 
-join:
-    uv run src/join_dvine_copula_recursive_dynamic_v2.py --data_split train --dataset_name imdb \
-    --output_excel_name join_dvine_v1_imdb_train_sample.xlsx --theta_cache_path "theta_cache.pkl" \
+join dataset_name="imdb":
+    uv run src/join_dvine_copula_recursive_dynamic_v2.py --data_split train --dataset_name {{dataset_name}} \
+    --output_excel_name join_dvine_v1_{{dataset_name}}_train_sample.xlsx --theta_cache_path "theta_cache.pkl" \
     --cdf_cache_name "cdf_cache.pkl" --no_of_training_queries 0 --sparcity 1.0
+
+sql2json dataset_name="imdb":
+    #! /bin/bash
+    export PYTHONPATH=$(pwd)/src
+    uv run src/colse/datasets/sql_to_json_converter.py --database {{dataset_name}} --input data/{{dataset_name}}/job-light.sql --output data/{{dataset_name}}/new-query.json
 
 # clear the cache
 [confirm]

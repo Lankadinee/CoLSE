@@ -343,6 +343,12 @@ class SplineDequantizer:
         """
         Given one old-data value, return the cumulative frequency at that value.
         """
+        if float(original_value) in [-np.inf, np.str_("-inf")]:
+            return 0
+            
+        if float(original_value) in [np.inf, np.str_("inf")]:
+            return 1
+
         if float(original_value) >= self._metadata.df_max_values[col_name]:
             return 1
 

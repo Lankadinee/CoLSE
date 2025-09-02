@@ -3,48 +3,54 @@ from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
-from colse.dataset_names import DatasetNames
-from colse.datasets.params import ROW_PREFIX
 from loguru import logger
 
 from colse.data_path import get_data_path
+from colse.dataset_names import DatasetNames
 from colse.df_utils import load_dataframe
 
 TABLE_COLS = {
-                "cast_info": ["movie_id","role_id"],
-                "movie_companies": ["movie_id","company_id","company_type_id"],
-                "movie_info_idx": ["movie_id","info_type_id"],
-                "movie_keyword": ["movie_id","keyword_id"],
-                "title": ["id","kind_id","production_year"],
-                "movie_info": ["movie_id","info_type_id"],
-            }
+    "customers": ["id", "name", "city"],
+    "orders": ["customer_id", "order_date", "amount"],
+    "products": ["customer_id", "product_name", "quantity", "price"],
+}
 
 NO_OF_COLS = {
-    "cast_info": 2,
-    "movie_companies": 3,
-    "movie_info_idx": 2,
-    "movie_keyword": 2,
-    "title": 3,
-    "movie_info": 2,
+    "customers": 3,
+    "orders": 3,
+    "products": 4,
 }
+
 
 def get_all_columns():
     # Query json order
     return [
-        "cast_info:role_id",
-        "movie_companies:company_id",
-        "movie_companies:company_type_id",
-        "movie_info:info_type_id",
-        "movie_keyword:keyword_id",
-        "title:kind_id",
-        "title:production_year",
-        "movie_info_idx:info_type_id",
+        "customers:name",
+        "customers:city",
+        "orders:order_date",
+        "orders:amount",
+        "products:product_name",
+        "products:quantity",
+        "products:price",
     ]
 
 
-def get_queries_imdb(**kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[str]]:
+def generate_dataset(**kwargs):
+    dataset_type = DatasetNames.CUSTOM_JOIN_DATA
+    dataset_path = get_data_path(dataset_type) / "custom_join_dataset.xlsx"
+    for index, table in enumerate(TABLE_COLS.keys()):
+        df = pd.read_excel(
+            dataset_path, sheet_name=f"table_{index + 1}", engine="openpyxl"
+        )
+        # df.columns = [f"{table}:{col}" for col in df.columns]
+        df.to_parquet(dataset_path.parent / f"{table}.parquet")
+        print(f"Saved {table}.parquet")
 
-    dataset_type = DatasetNames.IMDB_DATA
+
+def get_queries_custom_join(
+    **kwargs,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[str]]:
+    dataset_type = DatasetNames.CUSTOM_JOIN_DATA
     data_split = kwargs.get("data_split", "train")
     no_of_queries = kwargs.get("no_of_queries", None)
 
@@ -117,5 +123,4 @@ def get_queries_imdb(**kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List
 
 
 if __name__ == "__main__":
-    df = generate_dataset(data_file_name=DatasetNames.IMDB_DATA.get_file_path())
-    print(df.head())
+    generate_dataset()
