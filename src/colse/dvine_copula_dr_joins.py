@@ -7,7 +7,7 @@ from colse.column_index import ColumnIndexProvider, ColumnIndexTypes
 from colse.copula_types import CopulaTypes
 from colse.data_path import DataPathDir, get_data_path
 from colse.dataset_names import DatasetNames
-from colse.datasets.dataset_imdb import NO_OF_COLS, TABLE_COLS, get_all_columns
+from colse.datasets.join_dataset_info import get_all_columns, get_no_of_cols, get_table_cols
 from colse.df_utils import load_dataframe
 from colse.divine_copula_dynamic_recursive import DivineCopulaDynamicRecursive
 from colse.multi_spline_dequantizer import MultiSplineDequantizer
@@ -15,20 +15,21 @@ from colse.theta_storage import ThetaStorage
 
 
 class MultiDivineCopulaDynamicRecursive:
-    def __init__(self, ms_dequantizer: MultiSplineDequantizer) -> None:
-        self.dataset_type = DatasetNames.IMDB_DATA
+    def __init__(self, dataset_type: DatasetNames, ms_dequantizer: MultiSplineDequantizer) -> None:
+        self.dataset_type = dataset_type
         self.theta_dicts = {}
         self.col_index_providers = {}
         self.models = {}
         self.ms_dequantizer: MultiSplineDequantizer = ms_dequantizer
-        self.query_col_list = get_all_columns()
+        self.query_col_list = get_all_columns(self.dataset_type)
         self.no_of_rows = {}
         self.load_initial_data()
-        self.no_of_bins = 10
+        self.no_of_bins = 1000
         self.bin_value_list = self.split_bins()
 
     def split_bins(self):
-        dataset_path = get_data_path(self.dataset_type) / "title.parquet"
+        root_table_name = self.dataset_type.get_join_tables()[0] + ".parquet"
+        dataset_path = get_data_path(self.dataset_type) / root_table_name
         df = load_dataframe(dataset_path)
         all_ids = df["id"].to_numpy()
         # sort the ids
@@ -47,7 +48,7 @@ class MultiDivineCopulaDynamicRecursive:
             dataset_path = get_data_path(self.dataset_type) / f"{table_name}.parquet"
             df = load_dataframe(dataset_path)
             self.theta_dicts[table_name] = ThetaStorage(
-                CopulaTypes.GUMBEL, NO_OF_COLS[table_name]
+                CopulaTypes.GUMBEL, get_no_of_cols(self.dataset_type)[table_name]
             ).get_theta(
                 df,
                 cache_name=get_data_path(
@@ -70,7 +71,7 @@ class MultiDivineCopulaDynamicRecursive:
                 "<lower movie_id>",
                 "<upper movie_id>",
             ]
-            for column in TABLE_COLS[joined_table][1:]:
+            for column in get_table_cols(self.dataset_type)[joined_table][1:]:
                 q_col_name = f"{joined_table}:{column}"
                 q_index = self.query_col_list.index(q_col_name)
                 lb_query_index = q_index * 2
@@ -139,7 +140,7 @@ class MultiDivineCopulaDynamicRecursive:
         selectivity = np.sum(np.prod(result, axis=0, keepdims=False), axis=0)
         card_est = total_rows * selectivity
         print(f"Time Taken: {copula_pred_time} Selectivity: {selectivity} Total Rows: {total_rows} Card Est: {card_est}")
-        return card_est
+        return int(round(card_est, 0))
 
         # original_cdf_list = s_dequantize.get_converted_cdf(query, COLUMN_INDEXES)
         # col_indices, cdf_list = col_index_provider.get_column_index(original_cdf_list)

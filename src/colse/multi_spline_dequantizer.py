@@ -5,14 +5,14 @@
 from loguru import logger
 from colse.data_path import get_data_path
 from colse.dataset_names import DatasetNames
-from colse.datasets.dataset_imdb import TABLE_COLS
+from colse.datasets.join_dataset_info import get_table_cols
 from colse.df_utils import load_dataframe
 from colse.spline_dequantizer import SplineDequantizer
 
 
 class MultiSplineDequantizer:
     def __init__(self, dataset_type: DatasetNames):
-        assert dataset_type == DatasetNames.IMDB_DATA, "MultiSplineDequantizer only supports IMDB dataset"
+        assert dataset_type.is_join_type(), "MultiSplineDequantizer only supports IMDB and CUSTOM_JOIN datasets"
         self.dataset_type = dataset_type
         table_names = dataset_type.get_join_tables()
         self.dequantizers = {
@@ -38,5 +38,5 @@ class MultiSplineDequantizer:
                 logger.info("No non-continuous columns to dequantize")
 
     def get_converted_cdf(self, table_name, query):
-        no_of_cols = len(TABLE_COLS[table_name])
+        no_of_cols = len(get_table_cols(self.dataset_type)[table_name])
         return self.dequantizers[table_name].get_converted_cdf(query, column_indexes=[i for i in range(no_of_cols)])

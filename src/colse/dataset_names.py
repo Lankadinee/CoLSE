@@ -21,6 +21,7 @@ class DatasetNames(str, Enum):
     CORRELATED_06 = "correlated_06"
     CORRELATED_08 = "correlated_08"
     IMDB_DATA = "imdb"
+    CUSTOM_JOIN_DATA = "custom_join"
 
     def __str__(self):
         return self.value
@@ -52,6 +53,8 @@ class DatasetNames(str, Enum):
             dp = get_data_path(self.value) / (filename if filename else "forest.csv")
         elif self == DatasetNames.IMDB_DATA:
             dp = get_data_path(self.value) / (filename if filename else "samples_data.csv")
+        elif self == DatasetNames.CUSTOM_JOIN_DATA:
+            dp = get_data_path(self.value) / (filename if filename else "custom_join_dataset.xlsx")
         elif self == DatasetNames.CENSUS_DATA:
             dp = get_data_path(self.value) / (filename if filename else "census.csv")
         elif self.is_tpch_type():
@@ -109,6 +112,16 @@ class DatasetNames(str, Enum):
             ]
         elif self.is_correlated_type():
             return []
+        elif self == DatasetNames.CUSTOM_JOIN_DATA:
+            if "table_name" in kwargs:
+                columns_map = {
+                    "customers": ["name", "city"],
+                    "orders": [],
+                    "products": ["product_name"],
+                }
+                return columns_map[kwargs["table_name"]]
+            else:
+                return []
         elif self == DatasetNames.IMDB_DATA:
             if "table_name" in kwargs:
                 # columns_map = {
@@ -164,23 +177,29 @@ class DatasetNames(str, Enum):
             return 15
         elif self == DatasetNames.TPCH_LINEITEM_20:
             return 15
-        elif self == DatasetNames.IMDB_DATA:
+        elif self == DatasetNames.IMDB_DATA or self == DatasetNames.CUSTOM_JOIN_DATA:
             raise ValueError(f"Dataset {self} not supported to get no of columns")
         else:
             raise ValueError(f"Dataset {self} not supported")
 
     def is_join_type(self):
-        return self == DatasetNames.IMDB_DATA
+        return self == DatasetNames.IMDB_DATA or self == DatasetNames.CUSTOM_JOIN_DATA
 
     def get_join_tables(self):
         if self == DatasetNames.IMDB_DATA:
             return [
+                "title",
                 "cast_info",
                 "movie_companies",
                 "movie_info",
                 "movie_info_idx",
                 "movie_keyword",
-                "title",
+            ]
+        elif self == DatasetNames.CUSTOM_JOIN_DATA:
+            return [
+                "customers",
+                "orders",
+                "products",
             ]
         else:
             raise ValueError(f"Dataset {self} not supported")
