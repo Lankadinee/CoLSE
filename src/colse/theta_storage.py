@@ -36,7 +36,19 @@ class ThetaStorage:
 
         return theta_dict
 
-    def get_theta(self, data_np, cache_name=None):
+    def get_theta(self, df, cache_name=None):
+        if df.shape[0] > 25_000_000:
+            """Take a sample of 20_000_000 rows"""
+            begin_time_sampling = time.time()
+            data_np = (
+                df.sample(n=20_000_000, random_state=1, replace=False)
+                .to_numpy()
+                .transpose()
+            )
+            logger.info(f"Time Taken for Sampling: {time.time() - begin_time_sampling}")
+        else:
+            data_np = df.to_numpy().transpose()
+
         if cache_name is not None and os.path.exists(cache_name):
             logger.info(f"Loading theta from cache: {cache_name}")
             theta_dict = pickle_load(cache_name)

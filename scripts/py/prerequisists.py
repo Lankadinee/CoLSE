@@ -109,7 +109,7 @@ class Prerequisists:
             elif self.custom_update_type:
                 pattern = str(CURRENT_DIR / f"data/excels/{self.dataset_name}/*{self.dataset_name}_test_sample_*{self.custom_update_type}*")
                 self.prediction_paths_source = [Path(p) for p in glob(pattern)]
-                self.prediction_paths_destination = [Path(f"workloads/{self.dataset_name}/estimates/{pp.stem}.csv")  for pp in self.prediction_paths_source]
+                self.prediction_paths_destination = [Path(f"workloads/{self.dataset_name}/estimates/{self.model_name.name.lower()}_{pp.stem.split('_')[6]}.csv")  for pp in self.prediction_paths_source]
             else:
                 self.prediction_paths_source = [CURRENT_DIR / f"data/excels/{self.dataset_name}/dvine_v1_{self.dataset_name}_test_sample.xlsx"]
                 self.prediction_paths_destination = [CURRENT_DIR / Path(f"workloads/{self.dataset_name}/estimates/{self.model_name.name.lower()}.csv")]
