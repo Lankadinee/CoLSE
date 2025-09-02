@@ -148,8 +148,10 @@ def get_queries_imdb(**kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List
                 lb_list.append(query[key][1])
                 ub_list.append(np.inf)
             elif isinstance(query[key], list) and query[key][0] == "=":
-                lb_list.append(query[key][1])
-                ub_list.append(query[key][1])
+                # Note - Here we are using a small range to approximate the equal condition [for IMDB dataset]
+                equal_value = query[key][1]
+                lb_list.append(equal_value)
+                ub_list.append(equal_value + 1)
             else:
                 lb_list.append(-np.inf)
                 ub_list.append(np.inf)

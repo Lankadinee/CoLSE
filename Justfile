@@ -188,14 +188,26 @@ query-stats dataset_name="forest" update-type="": install env
         uv run src/query_explorer.py --dataset {{dataset_name}} --data-updates {{update-type}}
     fi
 
-
+join:
+    uv run src/join_dvine_copula_recursive_dynamic_v2.py --data_split train --dataset_name imdb \
+    --output_excel_name join_dvine_v1_imdb_train_sample.xlsx --theta_cache_path "theta_cache.pkl" \
+    --cdf_cache_name "cdf_cache.pkl" --no_of_training_queries 0 --sparcity 1.0
 
 # clear the cache
 [confirm]
-clear:
-    rm -rf data/cdf_cache
-    rm -rf data/theta_cache
-    rm -rf data/data_conversion_params
+clear dataset_name="":
+    #! /bin/bash
+    if [ -z "{{dataset_name}}" ]; then
+        rm -rf data/cdf_cache
+        rm -rf data/theta_cache
+        rm -rf data/data_conversion_params
+        echo "Cleared the cache"
+    else
+        rm -rf data/cdf_cache/{{dataset_name}}
+        rm -rf data/theta_cache/{{dataset_name}}
+        rm -rf data/data_conversion_params/{{dataset_name}}
+        echo "Cleared the cache for {{dataset_name}}"
+    fi
 
 # delete the data and the venv
 [confirm]
