@@ -66,7 +66,7 @@ def get_queries_correlated_06(**kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndar
     is_test_set = kwargs.get("is_test_set", False)
 
     """Load queries"""
-    query_json = dataset_dir.joinpath("query_correlated_0.6.json")
+    query_json = dataset_dir.joinpath("query.json")
     logger.info(f"Loading queries from {query_json.absolute()}")
     queries = json.load(query_json.open())
     # training_queries = queries['train']

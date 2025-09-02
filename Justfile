@@ -72,7 +72,7 @@ tt_list dataset_list="forest" no_of_training_queries_list="100 200 300": install
     read -ra queries <<< "{{no_of_training_queries_list}}"
     for dataset in "${datasets[@]}"; do
         for no_of_training_queries in "${queries[@]}"; do
-            just test "$dataset" "$no_of_training_queries"
+            just train_test "$dataset" "$no_of_training_queries"
         done
     done
 

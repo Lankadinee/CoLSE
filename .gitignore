@@ -20,3 +20,10 @@ postgres*
 *.backup
 *.xlsx
 *.png
+*.ipynb
+*.logs
+*.out
+scripts/py/send_query_analyze.py
+src/colse/evaluate.py
+workloads/dmv_cor_0.2/estimates/colse_retrained.csv.bk2
+test_all

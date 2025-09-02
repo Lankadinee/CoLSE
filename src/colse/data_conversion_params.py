@@ -6,7 +6,7 @@ from colse.data_path import DataPathDir, get_data_path
 from colse.dataset_names import DatasetNames
 
 from dataclasses import dataclass
-
+import pandas as pd
 import numpy as np
 
 
@@ -40,6 +40,19 @@ class DataConversionParams:
         with open(self._cache_name, "wb") as f:
             pickle.dump(dc_params, f)
         logger.info(f"Data conversion params stored in {self._cache_name}")
+    
+    def store_data_conversion_params_df(self, dataset : pd.DataFrame):
+        dc_params = DataConversionParamValues(
+            min_values=dataset.min().to_numpy(),
+            max_values=dataset.max().to_numpy(),
+            no_of_rows=dataset.shape[0]
+        )
+        
+        # save to pickle
+        with open(self._cache_name, "wb") as f:
+            pickle.dump(dc_params, f)
+        logger.info(f"Data conversion params stored in {self._cache_name}")
+
 
     def load_data_conversion_params(self):
         if not self._cache_name.exists():
