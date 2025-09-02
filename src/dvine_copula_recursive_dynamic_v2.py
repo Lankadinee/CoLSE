@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 from colse.column_index import ColumnIndexProvider, ColumnIndexTypes
 from colse.copula_types import CopulaTypes
-from colse.custom_data_generator import DS_TYPE_MAPPER, CustomDataGen
+from colse.custom_data_generator import CustomDataGen
 from colse.data_conversion_params import DataConversionParams
 from colse.data_path import DataPathDir, get_data_path, get_log_path, get_model_path
 from colse.dataset_names import DatasetNames
@@ -77,7 +77,7 @@ def parse_args():
         "--cdf_cache_name", type=str, default="cdf_cache.pkl", help="Name of the cdf cache file"
     )
     parser.add_argument(
-        "--no_of_training_queries", type=int, default=100, help="Number of training queries"
+        "--no_of_training_queries", type=int, default=0, help="Number of training queries"
     )
     parser.add_argument(
         "--sparcity", type=float, default=1.0, help="Sparcity of the queries"
@@ -108,8 +108,8 @@ def main():
 
     NO_OF_ROWS = None
     QUERY_SIZE = None
-    COLUMN_INDEXES = [i for i in range(dataset_type.get_no_of_columns())]
-    NO_OF_COLUMNS = len(COLUMN_INDEXES)
+    COLUMN_INDEXES = None
+    NO_OF_COLUMNS = dataset_type.get_no_of_columns()
 
     # pre process dataset
     preprocess_dataset(dataset_type, skip_if_exists=True, pp_enb=pp_enb)
@@ -180,10 +180,8 @@ def main():
     dc_params = DataConversionParams(dataset_type, parsed_args.update_type)
     dc_params.store_data_conversion_params(dataset)
 
-    # Fanout Scaling
-    fanout_scaling = FanoutScaling(dataset_type)
-
     if error_comp_model_path:
+        # TODO - Send dc_params to the error compensation model instead of dataset
         error_comp_model = ErrorCompensationNetwork(error_comp_model_path, dataset)
 
     df = dataset.df
@@ -227,23 +225,8 @@ def main():
     X = np.array([get_query(ql, qr) for ql, qr in zip(new_query_l, new_query_r)])
     y = np.array(actual_ce) / no_of_rows
 
-    # cdf_df = SplineDequantizer()
-    # cdf_df.fit(df, columns=dataset_type.get_non_continuous_columns())
-
-    if df.shape[0] > 25_000_000:
-        """Take a sample of 20_000_000 rows"""
-        begin_time_sampling = time.time()
-        data_np = (
-            df.sample(n=20_000_000, random_state=1, replace=False)
-            .to_numpy()
-            .transpose()
-        )
-        logger.info(f"Time Taken for Sampling: {time.time() - begin_time_sampling}")
-    else:
-        data_np = df.to_numpy().transpose()
-
     theta_dict = ThetaStorage(COPULA_TYPE, NO_OF_COLUMNS).get_theta(
-        data_np, cache_name=theta_cache_path
+        df, cache_name=theta_cache_path
     )
 
     col_index_provider = ColumnIndexProvider(df, ColumnIndexTypes.NATURAL_SKIP_ORDERING)
@@ -276,11 +259,6 @@ def main():
         y_bar = model.predict(cdf_list, column_list=col_indices)
         copula_pred_time = time.time() - start_time
 
-        # handle join queries
-        y_bar = y_bar / fanout_scaling.get_value(col_indices)
-        real_tot_rows = 212.88 * 10**10
-
-        
         time_taken_list.append(copula_pred_time)
         time_taken_predict_cdf_list.append(time_taken_predict_cdf)
         

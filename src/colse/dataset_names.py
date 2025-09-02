@@ -71,7 +71,7 @@ class DatasetNames(str, Enum):
 
         return dp
 
-    def get_non_continuous_columns(self):
+    def get_non_continuous_columns(self, **kwargs):
         if self == DatasetNames.FOREST_DATA:
             return []
         elif self == DatasetNames.POWER_DATA:
@@ -107,16 +107,30 @@ class DatasetNames(str, Enum):
                 "l_shipinstruct",
                 "l_shipmode",
             ]
+        elif self.is_correlated_type():
+            return []
         elif self == DatasetNames.IMDB_DATA:
-            return [
-                "cast_info:role_id",
-                "movie_companies:company_id",
-                "movie_companies:company_type_id",
-                "movie_info:info_type_id",
-                "movie_keyword:keyword_id",
-                "title:kind_id",
-                "movie_info_idx:info_type_id",  
-            ]
+            if "table_name" in kwargs:
+                # columns_map = {
+                #     "cast_info": ["role_id"],
+                #     "movie_companies": ["company_id", "company_type_id"],
+                #     "movie_info": ["info_type_id"],
+                #     "movie_keyword": ["keyword_id"],
+                #     "title": ["kind_id"],
+                #     "movie_info_idx": ["info_type_id"],
+                # }
+                # return columns_map[kwargs["table_name"]]
+                return []
+            else:
+                return [
+                    "cast_info:role_id",
+                    "movie_companies:company_id",
+                    "movie_companies:company_type_id",
+                    "movie_info:info_type_id",
+                    "movie_keyword:keyword_id",
+                    "title:kind_id",
+                    "movie_info_idx:info_type_id",  
+                ]
         else:
             raise ValueError(f"Dataset {self} not supported")
 
@@ -151,9 +165,22 @@ class DatasetNames(str, Enum):
         elif self == DatasetNames.TPCH_LINEITEM_20:
             return 15
         elif self == DatasetNames.IMDB_DATA:
-            return 8
+            raise ValueError(f"Dataset {self} not supported to get no of columns")
         else:
             raise ValueError(f"Dataset {self} not supported")
 
     def is_join_type(self):
         return self == DatasetNames.IMDB_DATA
+
+    def get_join_tables(self):
+        if self == DatasetNames.IMDB_DATA:
+            return [
+                "cast_info",
+                "movie_companies",
+                "movie_info",
+                "movie_info_idx",
+                "movie_keyword",
+                "title",
+            ]
+        else:
+            raise ValueError(f"Dataset {self} not supported")

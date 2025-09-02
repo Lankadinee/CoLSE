@@ -7,28 +7,30 @@ from pathlib import Path
 
 import pandas as pd
 import psycopg2
-from get_list_of_files import get_all_input_files, get_all_unprocessed_txt_files
+from colse_enums import get_common_database_name
+from get_list_of_files import get_all_input_files
 from loguru import logger
-from tqdm import tqdm
 from rich.console import Console
 from rich.table import Table
-from colse_enums import get_common_database_name
+from tqdm import tqdm
 
 RUN_ESTIMATES = True
 RETRY_CONNECTION_WHEN_FAILED = False
-EXECUTE_ANALYZE = True
+EXECUTE_ANALYZE = False
 
 
 current_dir = Path(__file__).resolve().parent
 
+
 def count_queried_columns(sql):
     # Extract column names using a regex pattern that matches "col_something"
     # This assumes column names are like col_2, col_4, etc.
-    columns = re.findall(r'\b(col_\w+)\b', sql)
+    columns = re.findall(r"\b(col_\w+)\b", sql)
     unique_columns = set(columns)
-    
+
     return len(unique_columns), unique_columns
-    
+
+
 def create_connection(database_name, cardest_filename=False, query_no=0):
     logger.info(f"Connecting to {database_name}...")
     conn = psycopg2.connect(
@@ -68,13 +70,17 @@ def run_one_file(database_name: str, cardest_filename: str):
     logger.info("------------------------------------------------------")
     database_common_name = get_common_database_name(database_name)
     database_split_name = database_name.split("_")[0]
-    logger.info(f"Running {cardest_filename} for database {database_name} with common name {database_common_name}")
-    sql_file =  f"./workloads/{database_name}/{database_common_name}.sql"
+    logger.info(
+        f"Running {cardest_filename} for database {database_name} with common name {database_common_name}"
+    )
+    sql_file = f"./workloads/{database_name}/{database_common_name}.sql"
 
     conn, cursor = create_connection(database_split_name)
 
     export_dirpath = current_dir / f"../plan_cost/{database_name}/"
-    export_filepath = export_dirpath / f'{cardest_filename.split(".")[0] + "_cost.xlsx"}'
+    export_filepath = (
+        export_dirpath / f"{cardest_filename.split('.')[0] + '_cost.xlsx'}"
+    )
     logger.info(f"Exporting to {export_filepath}")
     if not export_dirpath.exists():
         export_dirpath.mkdir(parents=True)
@@ -125,9 +131,7 @@ def run_one_file(database_name: str, cardest_filename: str):
 
     time.sleep(1)
     dict_list = []
-    loop = tqdm(
-        enumerate(queries), total=len(queries), leave=True, file=sys.stdout
-    )
+    loop = tqdm(enumerate(queries), total=len(queries), leave=True, file=sys.stdout)
     for no, query in loop:
         scan_type = []
         # sql_txt = "EXPLAIN (FORMAT JSON)SELECT COUNT(*) FROM forest;"
@@ -171,13 +175,15 @@ def run_one_file(database_name: str, cardest_filename: str):
             query_execution_time = res_json["Execution Time"]
             query_planning_time = res_json["Planning Time"]
             query_total_time = query_execution_time + query_planning_time
-            dict_list.append({
-                "index": no,
-                "query_total_time": query_total_time,
-                "query_execution_time": query_execution_time,
-                "query_planning_time": query_planning_time,
-                "query": query.split("\n")[0]
-            })
+            dict_list.append(
+                {
+                    "index": no,
+                    "query_total_time": query_total_time,
+                    "query_execution_time": query_execution_time,
+                    "query_planning_time": query_planning_time,
+                    "query": query.split("\n")[0],
+                }
+            )
         else:
             total_cost = res_json["Plan"]["Total Cost"]
             scan_type.append(res_json["Plan"]["Node Type"])
@@ -194,13 +200,12 @@ def run_one_file(database_name: str, cardest_filename: str):
                         "access_path": scan_type,
                         "input_card_est": rows,
                         "no_queried_columns": no_cols[0],
-                        "query": query.split("\n")[0]
+                        "query": query.split("\n")[0],
                     }
                 )
             else:
                 dict_list.append(
-                    {"total_cost_true": total_cost, 
-                    "access_path": scan_type}
+                    {"total_cost_true": total_cost, "access_path": scan_type}
                 )
 
     logger.info("Used estimates from ", cardest_filename)
@@ -221,16 +226,18 @@ def run_one_file(database_name: str, cardest_filename: str):
         logger.info(f"Min query total time: {df['query_total_time'].min()}")
         logger.info(f"Average query total time: {df['query_total_time'].mean()}")
 
-        export_filepath = export_dirpath / f'{cardest_filename.split(".")[0] + "_cost_analyze.xlsx"}'
-    
+        export_filepath = (
+            export_dirpath / f"{cardest_filename.split('.')[0] + '_cost_analyze.xlsx'}"
+        )
+
     """Write to a csv file"""
     logger.info(f"export_filepath: {export_filepath}")
     df.to_excel(export_filepath.as_posix(), index=False)
 
     # Show unique access paths
     if EXECUTE_ANALYZE:
-        return 
-    
+        return
+
     unique_access_paths_counts = df["access_path"].value_counts()
 
     console = Console()
@@ -243,7 +250,7 @@ def run_one_file(database_name: str, cardest_filename: str):
         table.add_row(",".join(path), str(count), f"{count / total_queries * 100:.2f}%")
 
     console.print(table)
-    
+
 
 def test():
     # Test the function with a sample dataset

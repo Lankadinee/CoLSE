@@ -398,9 +398,10 @@ class SplineDequantizer:
         return meta["cdf_values_strict"][idx] if strict else meta["cdf_vals"][idx]
     
 
-    def get_converted_cdf(self, query, column_indexes):
+    def get_converted_cdf(self, query, column_indexes=None):
         """Convert a query into continuous CDF values."""
-
+        if column_indexes is None:
+            column_indexes = [i for i in range(self._dataset_type.get_no_of_columns())]
         cdf_values = []
         categorical_columns = self._dataset_type.get_non_continuous_columns()
         pairwise_query = query.reshape(-1, 2)
@@ -416,12 +417,14 @@ class SplineDequantizer:
         return np.clip(np.array(cdf_values), 0, 1)
 
     # this is public method
-    def get_mapped_query(self, query, column_indexes):
+    def get_mapped_query(self, query, column_indexes=None):
         """
         Convert the query into a mapped query.
         Use each column's mapping to convert the query into a mapped query.
         """
         mapped_query = []
+        if column_indexes is None:
+            column_indexes = [i for i in range(self._dataset_type.get_no_of_columns())]
         _metadata = None
         categorical_columns = self._dataset_type.get_non_continuous_columns()
         try:
