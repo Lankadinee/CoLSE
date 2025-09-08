@@ -180,11 +180,10 @@ def main():
     )
 
     dc_params = DataConversionParams(dataset_type, parsed_args.update_type)
-    dc_params.store_data_conversion_params(dataset)
+    dc_param_values = dc_params.store_data_conversion_params(dataset)
 
     if error_comp_model_path:
-        # TODO - Send dc_params to the error compensation model instead of dataset
-        error_comp_model = ErrorCompensationNetwork(error_comp_model_path, dataset)
+        error_comp_model = ErrorCompensationNetwork(error_comp_model_path, dc_param_values)
 
     df = dataset.df
     no_of_rows = df.shape[0]

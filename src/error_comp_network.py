@@ -1,14 +1,13 @@
 import os
+
 import numpy as np
 import torch
 import torch.nn.functional as F
 from loguru import logger
 
-from colse.custom_data_generator import CustomDataGen
-from colse.dataset_names import DatasetNames
+from colse.data_conversion_params import DataConversionParamValues
 from colse.error_comp_model import ErrorCompModel
 from colse.res_utils import decode_label, encode_label, multiply_pairs_norm
-
 
 logger.level(os.getenv("LOG_LEVEL", "INFO"))
 
@@ -17,7 +16,12 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class ErrorCompensationNetwork:
-    def __init__(self, model_path: str, dataset: CustomDataGen, output_len: int = 3):
+    def __init__(
+        self,
+        model_path: str,
+        dcp_values: DataConversionParamValues,
+        output_len: int = 3,
+    ):
         logger.info(f"Loading model from - {model_path}")
         # Load model state from file
         state = torch.load(model_path, map_location=DEVICE, weights_only=False)
@@ -33,11 +37,11 @@ class ErrorCompensationNetwork:
         self.model.load_state_dict(state["model_state_dict"])
         # Store normalization parameters
         # TODO: Store these three values in the model state dict in the training stage
-        self.max_values = dataset.scaler.data_max_
-        self.min_values = dataset.scaler.data_min_
+        self.max_values = dcp_values.max_values
+        self.min_values = dcp_values.min_values
         logger.info(f"Errcompnet Max values: {self.max_values}")
         logger.info(f"Errcompnet Min values: {self.min_values}")
-        self.no_of_rows = dataset.no_of_rows
+        self.no_of_rows = dcp_values.no_of_rows
         # Prepare double indices for normalization
         indices = np.arange(len(self.min_values) * 2) // 2
         self.min_values_double = self.min_values[indices]
@@ -61,7 +65,9 @@ class ErrorCompensationNetwork:
         try:
             # Vectorized normalization - much faster than list comprehension
             q_np = (
-                query.flatten() if hasattr(query, "flatten") else np.array(query).flatten()
+                query.flatten()
+                if hasattr(query, "flatten")
+                else np.array(query).flatten()
             )
             # Create index array for min/max values (each pair uses same index)
             # logger.debug(f"q_np: {q_np}")
