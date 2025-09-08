@@ -40,6 +40,7 @@ class DataConversionParams:
         with open(self._cache_name, "wb") as f:
             pickle.dump(dc_params, f)
         logger.info(f"Data conversion params stored in {self._cache_name}")
+        return dc_params
     
     def store_data_conversion_params_df(self, dataset : pd.DataFrame):
         dc_params = DataConversionParamValues(
@@ -52,6 +53,7 @@ class DataConversionParams:
         with open(self._cache_name, "wb") as f:
             pickle.dump(dc_params, f)
         logger.info(f"Data conversion params stored in {self._cache_name}")
+        return dc_params
 
 
     def load_data_conversion_params(self):
