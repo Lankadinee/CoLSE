@@ -54,7 +54,8 @@ class SplineDequantizer:
         m: int = 10000,
         cache_name: str | None = None,
         output_file_name: str | None = None,
-        enable_uniques_shuffling: bool = False
+        enable_uniques_shuffling: bool = False,
+        enable_frequency_ordering: bool = False
     ):
         """
         Parameters
@@ -90,6 +91,7 @@ class SplineDequantizer:
         )
 
         self.enable_uniques_shuffling = enable_uniques_shuffling
+        self.enable_frequency_ordering = enable_frequency_ordering
 
     def get_dequantized_dataset_name(self):
         """ Get the name of the dequantized dataset """
@@ -161,12 +163,22 @@ class SplineDequantizer:
             # Current uniques - Index(['?', 'Federal-gov', 'Local-gov', 'Never-worked', 'Private', 'Self-emp-inc', 'Self-emp-not-inc', 'State-gov', 'Without-pay'],      dtype='object')
 
             if self.enable_uniques_shuffling:
+                # np.random.seed(85)
                 # Shuffle the unique values
                 shuffled_uniques = np.random.permutation(uniques)
                 mapping = {val: idx for idx, val in enumerate(shuffled_uniques)}
                 # Remap the codes to the shuffled unique values
                 lookup = np.array([np.where(shuffled_uniques == val)[0][0] for val in uniques])
                 logger.info(f"Random mapping: {' | '.join([f'{uniques[i]}: {i} -> {lookup[i]}' for i in range(len(uniques))])}")
+                codes = lookup[codes]
+                # np.random.seed(42)
+            elif self.enable_frequency_ordering:
+                # Enable order based on the frequency of the unique values, most frequent value first
+                frequency = np.bincount(codes)
+                frequency_order = np.argsort(frequency)[::-1]
+                mapping = {val: idx for idx, val in enumerate(uniques[frequency_order])}
+                lookup = np.array([np.where(uniques[frequency_order] == val)[0][0] for val in uniques])
+                logger.info(f"Frequency mapping: {' | '.join([f'{uniques[i]}: {i} -> {lookup[i]}' for i in range(len(uniques))])}")
                 codes = lookup[codes]
             else:
                 mapping = {val: idx for idx, val in enumerate(uniques)}
@@ -345,7 +357,7 @@ class SplineDequantizer:
         """
         if float(original_value) in [-np.inf, np.str_("-inf")]:
             return 0
-            
+
         if float(original_value) in [np.inf, np.str_("inf")]:
             return 1
 
@@ -404,12 +416,12 @@ class SplineDequantizer:
         return meta["cdf_values_strict"][idx] if strict else meta["cdf_vals"][idx]
     
 
-    def get_converted_cdf(self, query, column_indexes=None):
+    def get_converted_cdf(self, query, column_indexes=None, **kwargs):
         """Convert a query into continuous CDF values."""
         if column_indexes is None:
             column_indexes = [i for i in range(self._dataset_type.get_no_of_columns())]
         cdf_values = []
-        categorical_columns = self._dataset_type.get_non_continuous_columns()
+        categorical_columns = self._dataset_type.get_non_continuous_columns(**kwargs)
         pairwise_query = query.reshape(-1, 2)
         for idx, (value_lb, value_ub) in enumerate(pairwise_query):
             col_name = self._metadata.df_cols[column_indexes[idx]]
@@ -423,7 +435,7 @@ class SplineDequantizer:
         return np.clip(np.array(cdf_values), 0, 1)
 
     # this is public method
-    def get_mapped_query(self, query, column_indexes=None):
+    def get_mapped_query(self, query, column_indexes=None, **kwargs):
         """
         Convert the query into a mapped query.
         Use each column's mapping to convert the query into a mapped query.
@@ -432,7 +444,7 @@ class SplineDequantizer:
         if column_indexes is None:
             column_indexes = [i for i in range(self._dataset_type.get_no_of_columns())]
         _metadata = None
-        categorical_columns = self._dataset_type.get_non_continuous_columns()
+        categorical_columns = self._dataset_type.get_non_continuous_columns(**kwargs)
         try:
             for idx, value in enumerate(query[0]):
                 col_name = self._metadata.df_cols[column_indexes[idx//2]]

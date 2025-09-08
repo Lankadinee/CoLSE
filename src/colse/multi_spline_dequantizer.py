@@ -39,4 +39,8 @@ class MultiSplineDequantizer:
 
     def get_converted_cdf(self, table_name, query):
         no_of_cols = len(get_table_cols(self.dataset_type)[table_name])
-        return self.dequantizers[table_name].get_converted_cdf(query, column_indexes=[i for i in range(no_of_cols)])
+        return self.dequantizers[table_name].get_converted_cdf(query, column_indexes=[i for i in range(no_of_cols)], table_name=table_name)
+
+    def get_mapped_query(self, table_name, query):
+        no_of_cols = len(get_table_cols(self.dataset_type)[table_name])
+        return self.dequantizers[table_name].get_mapped_query(query, column_indexes=[i for i in range(no_of_cols)], table_name=table_name)

@@ -87,9 +87,24 @@ def parse_sql_query(expected_columns, sql_query):
 
                             try:
                                 value = int(right)
-                                constraints[full_column] = [">", value]
                             except ValueError:
-                                pass
+                                # Not a numeric literal; skip
+                                value = None
+
+                            if value is not None:
+                                existing = constraints.get(full_column)
+                                if (
+                                    isinstance(existing, list)
+                                    and len(existing) == 2
+                                    and existing[0] == "<"
+                                ):
+                                    # Combine > and < into a closed range [lb, ub]
+                                    constraints[full_column] = [
+                                        "[]",
+                                        [value, existing[1]],
+                                    ]
+                                else:
+                                    constraints[full_column] = [">", value]
 
             elif "<" in condition:
                 # Less than condition
@@ -106,9 +121,24 @@ def parse_sql_query(expected_columns, sql_query):
 
                             try:
                                 value = int(right)
-                                constraints[full_column] = ["<", value]
                             except ValueError:
-                                pass
+                                # Not a numeric literal; skip
+                                value = None
+
+                            if value is not None:
+                                existing = constraints.get(full_column)
+                                if (
+                                    isinstance(existing, list)
+                                    and len(existing) == 2
+                                    and existing[0] == ">"
+                                ):
+                                    # Combine > and < into a closed range [lb, ub]
+                                    constraints[full_column] = [
+                                        "[]",
+                                        [existing[1], value],
+                                    ]
+                                else:
+                                    constraints[full_column] = ["<", value]
 
     # Create ordered constraints dictionary
     ordered_constraints = {}
