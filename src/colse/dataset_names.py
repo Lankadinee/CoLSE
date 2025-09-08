@@ -124,16 +124,16 @@ class DatasetNames(str, Enum):
                 return []
         elif self == DatasetNames.IMDB_DATA:
             if "table_name" in kwargs:
-                # columns_map = {
-                #     "cast_info": ["role_id"],
-                #     "movie_companies": ["company_id", "company_type_id"],
-                #     "movie_info": ["info_type_id"],
-                #     "movie_keyword": ["keyword_id"],
-                #     "title": ["kind_id"],
-                #     "movie_info_idx": ["info_type_id"],
-                # }
-                # return columns_map[kwargs["table_name"]]
-                return []
+                columns_map = {
+                    "cast_info": ["role_id"],
+                    "movie_companies": ["company_id", "company_type_id"],
+                    "movie_info": ["info_type_id"],
+                    "movie_keyword": ["keyword_id"],
+                    "title": ["kind_id"],
+                    "movie_info_idx": ["info_type_id"],
+                }
+                return columns_map[kwargs["table_name"]]
+                # return []
             else:
                 return [
                     "cast_info:role_id",

@@ -25,29 +25,29 @@ DATABASE_SPLIT_NAME=${PARTS[0]} # e.g. correlated, census
 export PGPASSWORD=postgres
 
 # Copy estimations to the container
-echo "Copying estimations"
-for file in workloads/$DATABASE_NAME/estimates/*.csv; 
-do 
-    echo "Copying $file"; 
-    docker cp "$file" $CONTAINER_NAME:/var/lib/pgsql/13.1/data/; 
-done
+# echo "Copying estimations"
+# for file in workloads/$DATABASE_NAME/estimates/*.csv; 
+# do 
+#     echo "Copying $file"; 
+#     docker cp "$file" $CONTAINER_NAME:/var/lib/pgsql/13.1/data/; 
+# done
 
 # Copy the single table datasets to the container
-docker exec $CONTAINER_NAME mkdir -p /tmp/single_table_datasets; 
-docker cp $(pwd)/single_table_datasets/$DATABASE_COMMON_NAME/ $CONTAINER_NAME:/tmp/single_table_datasets/$DATABASE_COMMON_NAME; 
-docker exec $CONTAINER_NAME ls -la /tmp/single_table_datasets/$DATABASE_COMMON_NAME # show the contents of the container
+# docker exec $CONTAINER_NAME mkdir -p /tmp/single_table_datasets; 
+# docker cp $(pwd)/single_table_datasets/$DATABASE_COMMON_NAME/ $CONTAINER_NAME:/tmp/single_table_datasets/$DATABASE_COMMON_NAME; 
+# docker exec $CONTAINER_NAME ls -la /tmp/single_table_datasets/$DATABASE_COMMON_NAME # show the contents of the container
 
 # Copy the scripts to the container
-docker cp $(pwd)/scripts $CONTAINER_NAME:/tmp/scripts
-docker cp $(pwd)/scripts/sql/ $CONTAINER_NAME:/tmp/scripts/sql/
+# docker cp $(pwd)/scripts $CONTAINER_NAME:/tmp/scripts
+# docker cp $(pwd)/scripts/sql/ $CONTAINER_NAME:/tmp/scripts/sql/
 
 # Set the permissions for the container
-docker exec --user root $CONTAINER_NAME chown -R postgres:postgres /var/lib/pgsql/13.1/data/
-docker exec --user root $CONTAINER_NAME chmod -R 750 /var/lib/pgsql/13.1/data/
-docker exec --user root $CONTAINER_NAME chown -R postgres:postgres /tmp/scripts
-docker exec --user root $CONTAINER_NAME chown -R postgres:postgres /tmp/single_table_datasets/
-docker exec --user root $CONTAINER_NAME chmod -R 750 /tmp/scripts
-docker exec --user root $CONTAINER_NAME chmod -R 750 /tmp/single_table_datasets/
+# docker exec --user root $CONTAINER_NAME chown -R postgres:postgres /var/lib/pgsql/13.1/data/
+# docker exec --user root $CONTAINER_NAME chmod -R 750 /var/lib/pgsql/13.1/data/
+# docker exec --user root $CONTAINER_NAME chown -R postgres:postgres /tmp/scripts
+# docker exec --user root $CONTAINER_NAME chown -R postgres:postgres /tmp/single_table_datasets/
+# docker exec --user root $CONTAINER_NAME chmod -R 750 /tmp/scripts
+# docker exec --user root $CONTAINER_NAME chmod -R 750 /tmp/single_table_datasets/
 
 # Create a temporary SQL script file with all commands
 SQL_SCRIPT="/tmp/commands.sql"

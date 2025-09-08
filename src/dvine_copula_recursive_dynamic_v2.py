@@ -40,6 +40,7 @@ SHOW_DEBUG_INFO = False
 SEED = 42
 np.random.seed(SEED)
 ENABLE_DEQUANTIZER_UNIQUES_SHUFFLING = False
+ENABLE_DEQUANTIZER_FREQUENCY_ORDERING = False
 
 
 def parse_args():
@@ -147,7 +148,8 @@ def main():
         dataset_type=dataset_type,
         cache_name=parsed_args.cdf_cache_name,
         output_file_name=output_file_name,
-        enable_uniques_shuffling=ENABLE_DEQUANTIZER_UNIQUES_SHUFFLING
+        enable_uniques_shuffling=ENABLE_DEQUANTIZER_UNIQUES_SHUFFLING,
+        enable_frequency_ordering=ENABLE_DEQUANTIZER_FREQUENCY_ORDERING
     )
     s_dequantize.fit_transform(load_dataframe(dataset_type.get_file_path(original_file_name)))
     
@@ -216,6 +218,12 @@ def main():
         new_query_r = new_query_r[:no_of_training_queries]
         actual_ce = actual_ce[:no_of_training_queries]
         logger.info(f"Reducing the number of training queries from {current_no_of_rows} to {no_of_training_queries}")
+
+        # # suffle the queries
+        # idx = np.random.permutation(current_no_of_rows)
+        # new_query_l = new_query_l[idx]
+        # new_query_r = new_query_r[idx]
+        # actual_ce = actual_ce[idx]
 
     logger.info(f"Query Size: {len(new_query_l)}")
 

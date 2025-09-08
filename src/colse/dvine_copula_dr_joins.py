@@ -7,7 +7,11 @@ from colse.column_index import ColumnIndexProvider, ColumnIndexTypes
 from colse.copula_types import CopulaTypes
 from colse.data_path import DataPathDir, get_data_path
 from colse.dataset_names import DatasetNames
-from colse.datasets.join_dataset_info import get_all_columns, get_no_of_cols, get_table_cols
+from colse.datasets.join_dataset_info import (
+    get_all_columns,
+    get_no_of_cols,
+    get_table_cols,
+)
 from colse.df_utils import load_dataframe
 from colse.divine_copula_dynamic_recursive import DivineCopulaDynamicRecursive
 from colse.multi_spline_dequantizer import MultiSplineDequantizer
@@ -15,7 +19,9 @@ from colse.theta_storage import ThetaStorage
 
 
 class MultiDivineCopulaDynamicRecursive:
-    def __init__(self, dataset_type: DatasetNames, ms_dequantizer: MultiSplineDequantizer) -> None:
+    def __init__(
+        self, dataset_type: DatasetNames, ms_dequantizer: MultiSplineDequantizer
+    ) -> None:
         self.dataset_type = dataset_type
         self.theta_dicts = {}
         self.col_index_providers = {}
@@ -24,7 +30,8 @@ class MultiDivineCopulaDynamicRecursive:
         self.query_col_list = get_all_columns(self.dataset_type)
         self.no_of_rows = {}
         self.load_initial_data()
-        self.no_of_bins = 1000
+        self.no_of_bins = 7
+        self.bin_size = None
         self.bin_value_list = self.split_bins()
 
     def split_bins(self):
@@ -41,6 +48,7 @@ class MultiDivineCopulaDynamicRecursive:
             bin_ids = all_ids[int(i * bin_size)]
             bin_value_list.append(bin_ids)
         bin_value_list.append(all_ids[-1])
+        self.bin_size = bin_size
         return bin_value_list
 
     def load_initial_data(self):
@@ -68,8 +76,8 @@ class MultiDivineCopulaDynamicRecursive:
         table_wise_sub_queries = {}
         for joined_table in joined_tables:
             table_wise_sub_queries[joined_table] = [
-                "<lower movie_id>",
-                "<upper movie_id>",
+                888,
+                888,
             ]
             for column in get_table_cols(self.dataset_type)[joined_table][1:]:
                 q_col_name = f"{joined_table}:{column}"
@@ -103,9 +111,7 @@ class MultiDivineCopulaDynamicRecursive:
             for bin_index, (l_bin, u_bin) in enumerate(
                 zip(self.bin_value_list, self.bin_value_list[1:])
             ):
-                mod_sub_query = self.modify_sub_query_for_bin(
-                    s_query, l_bin, u_bin
-                )
+                mod_sub_query = self.modify_sub_query_for_bin(s_query, l_bin, u_bin)
                 mod_sub_query_cdf = self.ms_dequantizer.get_converted_cdf(
                     joined_table, mod_sub_query
                 )
@@ -116,30 +122,16 @@ class MultiDivineCopulaDynamicRecursive:
                 y_bar = self.models[joined_table].predict(
                     cdf_list, column_list=col_indices
                 )
-                # print(
-                #     f"Prediction for {joined_table} with {l_bin} and {u_bin} is {y_bar}"
-                # )
-                result[joined_table_index][bin_index] = y_bar
+                result[joined_table_index][bin_index] = y_bar / self.bin_size
 
-            base_s_query = s_query.copy()
-            base_s_query[0] = -np.inf
-            base_s_query[1] = np.inf
-            base_sub_query_cdf = self.ms_dequantizer.get_converted_cdf(
-                joined_table, base_s_query
-            )
-            col_indices, cdf_list = self.col_index_providers[
-                joined_table
-            ].get_column_index(base_sub_query_cdf)
-            y_bar_div = self.models[joined_table].predict(
-                cdf_list, column_list=col_indices
-            )
-            result[joined_table_index] /= y_bar_div
-            total_rows *= self.no_of_rows[joined_table] * y_bar_div
+            total_rows *= self.no_of_rows[joined_table]
 
         copula_pred_time = time.time() - start_time
         selectivity = np.sum(np.prod(result, axis=0, keepdims=False), axis=0)
-        card_est = total_rows * selectivity
-        print(f"Time Taken: {copula_pred_time} Selectivity: {selectivity} Total Rows: {total_rows} Card Est: {card_est}")
+        card_est = total_rows * selectivity * self.bin_size
+        print(
+            f"Time Taken: {copula_pred_time} Selectivity: {selectivity} Total Rows: {total_rows} Card Est: {card_est}"
+        )
         return int(round(card_est, 0))
 
         # original_cdf_list = s_dequantize.get_converted_cdf(query, COLUMN_INDEXES)

@@ -31,7 +31,7 @@ stop_all_containers:
 	echo "Stopping all containers"
 	docker stop $(shell docker ps -a -q) || true
 
-# Run this command to build the docker image
+# Step 1 - Run this command to build the docker image for the postgres database
 docker:
 	unzip -q data/postgresql-13.1.zip
 	tar cf postgres-13.1.tar.gz postgresql-13.1
@@ -41,6 +41,7 @@ docker:
 	cd dockerfile && docker build -t $(IMAGE_NAME) --network=host .
 	rm -rf postgres-13.1.tar.gz
 
+# Step 2 - This command is used to run the docker container
 docker_run:
 	echo "Starting docker"
 	docker rm -f $(CONTAINER_NAME) || true
@@ -49,6 +50,7 @@ docker_run:
 	# docker run -v $(shell pwd)/single_table_datasets/${DATABASE_NAME}:/tmp/single_table_datasets/${DATABASE_NAME}:ro -v $(shell pwd)/scripts:/tmp/scripts:ro --name $(CONTAINER_NAME) -p 5431:5432 -d $(IMAGE_NAME)
 	echo "Docker is running"
 
+# Step 3 - This command is used to copy the estimations to the docker container
 copy_estimations:
 	echo "Copying estimations"
 	@for file in workloads/$(DATABASE_NAME)/estimates/*.csv; do \
@@ -59,9 +61,11 @@ copy_estimations:
 	@COMMON_NAME=$$(bash scripts/sh/get_common_name.sh $(DATABASE_NAME)); \
 	docker exec $(CONTAINER_NAME) mkdir -p /tmp/single_table_datasets; \
 	docker cp $$(pwd)/single_table_datasets/$$COMMON_NAME/ $(CONTAINER_NAME):/tmp/single_table_datasets/$(COMMON_NAME); \
+	
 	docker cp $$(pwd)/scripts $(CONTAINER_NAME):/tmp/scripts
 	docker cp $$(pwd)/scripts/sql/ $(CONTAINER_NAME):/tmp/scripts/sql/
 
+# Step 4 - This command is used to set the docker permissions
 set_docker_permissions:
 	@docker exec --user root $(CONTAINER_NAME) chown -R postgres:postgres /var/lib/pgsql/13.1/data/
 	@docker exec --user root $(CONTAINER_NAME) chmod -R 750 /var/lib/pgsql/13.1/data/
@@ -70,6 +74,7 @@ set_docker_permissions:
 	@docker exec --user root $(CONTAINER_NAME) chmod -R 750 /tmp/scripts
 	@docker exec --user root $(CONTAINER_NAME) chmod -R 750 /tmp/single_table_datasets/
 
+# Step 5 - This command is used to create the database
 create_db:
 	#!/bin/bash
 	@sleep 2

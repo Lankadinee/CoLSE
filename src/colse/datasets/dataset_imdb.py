@@ -92,7 +92,7 @@ def get_queries_imdb(**kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List
                 # Note - Here we are using a small range to approximate the equal condition [for IMDB dataset]
                 equal_value = query[key][1]
                 lb_list.append(equal_value)
-                ub_list.append(equal_value + 1)
+                ub_list.append(equal_value)
             else:
                 lb_list.append(-np.inf)
                 ub_list.append(np.inf)
@@ -114,8 +114,3 @@ def get_queries_imdb(**kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List
         query_joined_tables = query_joined_tables
 
     return query_l, query_r, true_card, query_joined_tables
-
-
-if __name__ == "__main__":
-    df = generate_dataset(data_file_name=DatasetNames.IMDB_DATA.get_file_path())
-    print(df.head())

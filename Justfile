@@ -180,12 +180,12 @@ run-postgres-performance dataset_name="forest" update_type="":
 
 
 # Compute per-column query usage statistics
-query-stats dataset_name="forest" update-type="": install env
+query-stats dataset_name="forest" update-type="none" no-of-queries-list=" " data-split-list=" ": install env
     #! /bin/bash
-    if [ -z "{{update-type}}" ]; then
-        uv run src/query_explorer.py --dataset {{dataset_name}}
+    if [ "{{update-type}}" = "none" ]; then
+        uv run src/query_explorer.py --dataset {{dataset_name}} --no-of-queries-list {{no-of-queries-list}} --data-split-list {{data-split-list}}
     else
-        uv run src/query_explorer.py --dataset {{dataset_name}} --data-updates {{update-type}}
+        uv run src/query_explorer.py --dataset {{dataset_name}} --data-updates {{update-type}} --no-of-queries-list {{no-of-queries-list}} --data-split-list {{data-split-list}}
     fi
 
 join dataset_name="imdb":
