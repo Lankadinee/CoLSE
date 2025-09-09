@@ -241,7 +241,7 @@ def main():
         query = x
         query = query.reshape(1, -1)
         start_time = time.time()
-        y_bar = model.predict(query, joined_tables=jt)
+        card_est, selectivity = model.predict(query, joined_tables=jt)
         # start_time_predict_cdf = time.time()
         # original_cdf_list = s_dequantize.get_converted_cdf(query, COLUMN_INDEXES)
         # time_taken_predict_cdf = time.time() - start_time_predict_cdf
@@ -262,16 +262,16 @@ def main():
         # time_taken_predict_cdf_list.append(time_taken_predict_cdf)
         
 
-        if not isinstance(y_bar, int) and np.isnan(y_bar):  # or np.isnan(y_bar_2):
+        if not isinstance(card_est, int) and np.isnan(card_est):  # or np.isnan(y_bar_2):
             nan_count += 1
             continue
-        q_error = qerror(est_card=y_bar, card=y_act, no_of_rows=None)
+        q_error = qerror(est_card=card_est, card=y_act, no_of_rows=None)
         mapped_query = ms_dequantize.get_mapped_normalized_query(query)
         query_cdf = ms_dequantize.get_full_cdf(query)
         one_hot = np.array([1 if x in jt else 0 for x in all_tables])
 
-        x_train = np.concatenate((mapped_query, query_cdf, one_hot, np.array([y_bar])))
-        y_train = np.array(y_act)
+        x_train = np.concatenate((mapped_query, one_hot, np.array([selectivity])))
+        y_train = np.array([y_act, card_est, selectivity])
         x_train_list.append(x_train)
         y_train_list.append(y_train)
 
@@ -307,7 +307,7 @@ def main():
             # table.add_row("Modified Query", f"{query_modified.shape}", f"{query_modified}")
             # table.add_row("CDF", f"{cdf_list.shape}", f"{cdf_list}")
             # table.add_row("Mapped Query", f"{mapped_query.shape}", f"{mapped_query}")
-            table.add_row("Y Bar", f"{y_bar.shape}", f"{y_bar}")
+            table.add_row("Y Bar", f"{card_est.shape}", f"{card_est}")
             # table.add_row("Y Bar 2", f"{y_bar_2.shape if y_bar_2 is not None else 'None'}", f"{y_bar_2}")
             table.add_row("Y", f"{y_act.shape if y_act is not None else 'None'}", f"{y_act}")
             console = Console()
@@ -321,7 +321,7 @@ def main():
                 "X": ",".join(list(map(str, query_cdf))),
                 "query": ",".join(list(map(str, query[0]))),
                 "mapped_query": ",".join(list(map(str, mapped_query))),
-                "y_bar": int(y_bar),
+                "y_bar": int(card_est),
                 # "y_bar_2": y_bar_2,
                 "y": int(y_act),
                 # "gt": y_act * no_of_rows,

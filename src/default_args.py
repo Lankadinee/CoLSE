@@ -29,7 +29,10 @@ class Args:
         self.__dict__.update(kwargs)
 
         self.dataset = DatasetNames(self.dataset_name)
-        self.fea_num = self.dataset.get_no_of_columns() * 2 + self.additional_features
+        if self.dataset.is_join_type():
+            self.fea_num = 8 * 2 + 6 + 1
+        else:
+            self.fea_num = self.dataset.get_no_of_columns() * 2 + self.additional_features
         self.update_type = kwargs.get("update_type", None)
 
     def __str__(self):

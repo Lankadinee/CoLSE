@@ -13,7 +13,8 @@ from torch.utils.data import DataLoader
 from rich.console import Console
 from rich.table import Table
 
-from colse.data_path import get_log_path, get_model_path
+from colse.data_path import DataPathDir, get_data_path, get_log_path, get_model_path
+from colse.dataset_names import DatasetNames
 from colse.error_comp_model import ErrorCompModel
 from colse.model_dataloaders import load_lw_dataset, make_dataset
 from colse.model_utils import (
@@ -23,7 +24,7 @@ from colse.model_utils import (
     get_actual_cardinality,
     report_model,
 )
-from colse.res_utils import decode_label
+from colse.res_utils import decode_label, encode_label
 from default_args import Args
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -61,8 +62,42 @@ def show_metrics(metrics, **kwargs):
     console.print(table)
 
 
+def get_dataset():
+    # load dataset
+    dataset = load_lw_dataset(args=args)
+    train_dataset = make_dataset(
+        dataset["train"], num=int(args.no_of_queries * args.train_test_split)
+    )
+    valid_dataset = make_dataset(
+        dataset["valid"], num=int(args.no_of_queries * (1 - args.train_test_split))
+    )
+
+    
+    return train_dataset, valid_dataset
+
+def get_dataset_from_npy(dataset_type):
+    npy_path = get_data_path(DataPathDir.NPY_FILES, dataset_type.value)
+    # load dataset
+    x_train = np.load(npy_path / "x_train.npy")
+    y_train_np = np.load(npy_path / "y_train.npy")
+    gt_np = y_train_np[:, 0]
+    card_est_np = y_train_np[:, 1]
+    y_res = gt_np - card_est_np
+    y_sign_plus = (y_res >= 0).astype(int)
+    y_sign_minus = (y_res < 0).astype(int)
+    y_abs = encode_label(np.abs(y_res))
+    y_train = np.concatenate(
+        [y_sign_plus[:, None], y_sign_minus[:, None], y_abs[:, None]], axis=1
+    )
+
+    train_dataset = (x_train, y_train, gt_np, "train")
+    valid_dataset = (x_train, y_train, gt_np, "valid")
+    return make_dataset(train_dataset), make_dataset(valid_dataset)
+
+
 def train_lw_nn(output_model_path, pretrained_model_path, seed=42):
     # uniform thread number
+    dataset_type = DatasetNames(args.dataset_name)
     torch.set_num_threads(NUM_THREADS)
     assert NUM_THREADS == torch.get_num_threads(), torch.get_num_threads()
     logger.info(f"torch threads: {torch.get_num_threads()}")
@@ -88,14 +123,7 @@ def train_lw_nn(output_model_path, pretrained_model_path, seed=42):
         model.load_state_dict(state["model_state_dict"])
         logger.info(f"Loaded pretrained model from {pretrained_model_path}")
 
-    # load dataset
-    dataset = load_lw_dataset(args=args)
-    train_dataset = make_dataset(
-        dataset["train"], num=int(args.no_of_queries * args.train_test_split)
-    )
-    valid_dataset = make_dataset(
-        dataset["valid"], num=int(args.no_of_queries * (1 - args.train_test_split))
-    )
+    train_dataset, valid_dataset = get_dataset_from_npy(dataset_type) if dataset_type.is_join_type() else get_dataset()
 
     class_weights = calculate_class_weights(train_dataset.y)
 

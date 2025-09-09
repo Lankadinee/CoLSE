@@ -132,7 +132,7 @@ class MultiDivineCopulaDynamicRecursive:
         print(
             f"Time Taken: {copula_pred_time} Selectivity: {selectivity} Total Rows: {total_rows} Card Est: {card_est}"
         )
-        return int(round(card_est, 0))
+        return int(round(card_est, 0)), selectivity
 
         # original_cdf_list = s_dequantize.get_converted_cdf(query, COLUMN_INDEXES)
         # col_indices, cdf_list = col_index_provider.get_column_index(original_cdf_list)
