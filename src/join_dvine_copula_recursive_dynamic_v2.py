@@ -262,7 +262,7 @@ def main():
             nan_count += 1
             continue
         q_error = qerror(y_bar, y_act, no_of_rows=None)
-        # mapped_query = s_dequantize.get_mapped_query(query, COLUMN_INDEXES)
+        mapped_query = ms_dequantize.get_mapped_query(query)
         # logger.info(f"Prediction: {y_bar} Mapped query: {mapped_query}")
         # if not any(mapped_query):
         #     logger.warning(f"Mapped query is empty for query: {query}")
@@ -308,7 +308,7 @@ def main():
             {
                 # "X": ",".join(list(map(str, cdf_list))),
                 "query": ",".join(list(map(str, query[0]))),
-                # "mapped_query": ",".join(list(map(str, mapped_query))),
+                "mapped_query": ",".join(list(map(str, mapped_query))),
                 "y_bar": int(y_bar),
                 # "y_bar_2": y_bar_2,
                 "y": int(y_act),

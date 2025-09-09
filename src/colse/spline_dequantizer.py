@@ -450,13 +450,13 @@ class SplineDequantizer:
                 col_name = self._metadata.df_cols[column_indexes[idx//2]]
                 if col_name in categorical_columns:
                     _metadata = self._dequantizers[DequantizerType.CATEGORICAL][col_name]
-                    if value == np.str_("-inf"):
+                    if value == np.str_("-inf") or value == -np.inf:
                         mapped_query.append(
                             min(
                                 _metadata["mapping"].values()
                             )
                         )
-                    elif value == np.str_("inf"):
+                    elif value == np.str_("inf") or value == np.inf:
                         mapped_query.append(
                             max(
                                 _metadata["mapping"].values()
