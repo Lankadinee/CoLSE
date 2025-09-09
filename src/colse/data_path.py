@@ -12,6 +12,7 @@ class DataPathDir(StrEnum):
     DATA_UPDATES = auto()
     DATA_CONVERSION_PARAMS = auto()
     WORKLOAD_UPDATES = auto()
+    NPY_FILES = auto()
 
 def get_data_path(*args):
     CWD = Path(__file__).resolve().parent

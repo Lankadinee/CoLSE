@@ -121,7 +121,7 @@ class DatasetNames(str, Enum):
                 }
                 return columns_map[kwargs["table_name"]]
             else:
-                return []
+                raise ValueError(f"Table name not provided for {self}")
         elif self == DatasetNames.IMDB_DATA:
             if "table_name" in kwargs:
                 columns_map = {
@@ -135,15 +135,16 @@ class DatasetNames(str, Enum):
                 return columns_map[kwargs["table_name"]]
                 # return []
             else:
-                return [
-                    "cast_info:role_id",
-                    "movie_companies:company_id",
-                    "movie_companies:company_type_id",
-                    "movie_info:info_type_id",
-                    "movie_keyword:keyword_id",
-                    "title:kind_id",
-                    "movie_info_idx:info_type_id",  
-                ]
+                raise ValueError(f"Table name not provided for {self}")
+                # return [
+                #     "cast_info:role_id",
+                #     "movie_companies:company_id",
+                #     "movie_companies:company_type_id",
+                #     "movie_info:info_type_id",
+                #     "movie_keyword:keyword_id",
+                #     "title:kind_id",
+                #     "movie_info_idx:info_type_id",  
+                # ]
         else:
             raise ValueError(f"Dataset {self} not supported")
 
