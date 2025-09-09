@@ -23,12 +23,12 @@ class MultiDivineCopulaDynamicRecursive:
         self, dataset_type: DatasetNames, ms_dequantizer: MultiSplineDequantizer
     ) -> None:
         self.dataset_type = dataset_type
-        self.theta_dicts = {}
-        self.col_index_providers = {}
-        self.models = {}
+        self.theta_dicts : dict[str, dict[tuple[int, int], float]] = {}
+        self.col_index_providers : dict[str, ColumnIndexProvider] = {}
+        self.models : dict[str, DivineCopulaDynamicRecursive] = {}
         self.ms_dequantizer: MultiSplineDequantizer = ms_dequantizer
         self.query_col_list = get_all_columns(self.dataset_type)
-        self.no_of_rows = {}
+        self.no_of_rows : dict[str, int] = {}
         self.load_initial_data()
         self.no_of_bins = 7
         self.bin_size = None

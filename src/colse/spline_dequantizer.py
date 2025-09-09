@@ -137,7 +137,7 @@ class SplineDequantizer:
         """
         logger.info(f"X shape: {x.shape}")
         if is_numeric_dtype(x):
-            logger.info("Numeric column")
+            logger.info(f"{col_name} is a Numeric column")
             uniques = np.sort(x.dropna().unique())
             K = len(uniques)
             # logger.info(f"Uniques shape: {uniques.shape}")
@@ -148,9 +148,10 @@ class SplineDequantizer:
             counts = np.bincount(codes, minlength=K)
             p = counts.astype(np.float64) / float(N)
             cdf_vals = np.cumsum(p)
-            z_b = uniques.astype(np.float64)
+            # z_b = uniques.astype(np.float64)
+            z_b = np.array([i for i in range(K)])
         else:
-            logger.info("Categorical column")
+            logger.info(f"{col_name} is a Categorical column")
             codes, uniques = pd.factorize(x, sort=True)
             if (codes < 0).any():
                 raise ValueError(
@@ -298,7 +299,7 @@ class SplineDequantizer:
         z = np.interp(v, grid_c, grid_z)
         return z
 
-    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+    def transform(self, df: pd.DataFrame, **kwargs) -> pd.DataFrame:
         """
         Currently only supports dequantizing Categorical columns.
 
@@ -307,7 +308,7 @@ class SplineDequantizer:
         """
         start_time = time.perf_counter()
         
-        cat_cols = self._dataset_type.get_non_continuous_columns() 
+        cat_cols = self._dataset_type.get_non_continuous_columns(**kwargs) 
         result = pd.DataFrame(index=df.index)
         table_v1 = Table(title="Time taken for Dequantizer")
         table_v1.add_column("Column Name", justify="right")
@@ -416,7 +417,7 @@ class SplineDequantizer:
         return meta["cdf_values_strict"][idx] if strict else meta["cdf_vals"][idx]
     
 
-    def get_converted_cdf(self, query, column_indexes=None, **kwargs):
+    def get_converted_cdf(self, query: np.ndarray, column_indexes=None, **kwargs):
         """Convert a query into continuous CDF values."""
         if column_indexes is None:
             column_indexes = [i for i in range(self._dataset_type.get_no_of_columns())]

@@ -233,6 +233,10 @@ def main():
     time_taken_list = []
     time_taken_predict_cdf_list = []
     loop = tqdm(zip(X, y, query_joined_tables), total=X.shape[0])
+    all_tables = dataset_type.get_join_tables()
+
+    x_train_list = []
+    y_train_list = []
     for x, y_act, jt in loop:
         query = x
         query = query.reshape(1, -1)
@@ -261,8 +265,16 @@ def main():
         if not isinstance(y_bar, int) and np.isnan(y_bar):  # or np.isnan(y_bar_2):
             nan_count += 1
             continue
-        q_error = qerror(y_bar, y_act, no_of_rows=None)
-        mapped_query = ms_dequantize.get_mapped_query(query)
+        q_error = qerror(est_card=y_bar, card=y_act, no_of_rows=None)
+        mapped_query = ms_dequantize.get_mapped_normalized_query(query)
+        query_cdf = ms_dequantize.get_full_cdf(query)
+        one_hot = np.array([1 if x in jt else 0 for x in all_tables])
+
+        x_train = np.concatenate((mapped_query, query_cdf, one_hot, np.array([y_bar])))
+        y_train = np.array(y_act)
+        x_train_list.append(x_train)
+        y_train_list.append(y_train)
+
         # logger.info(f"Prediction: {y_bar} Mapped query: {mapped_query}")
         # if not any(mapped_query):
         #     logger.warning(f"Mapped query is empty for query: {query}")
@@ -306,7 +318,7 @@ def main():
 
         dict_list.append(
             {
-                # "X": ",".join(list(map(str, cdf_list))),
+                "X": ",".join(list(map(str, query_cdf))),
                 "query": ",".join(list(map(str, query[0]))),
                 "mapped_query": ",".join(list(map(str, mapped_query))),
                 "y_bar": int(y_bar),
@@ -331,6 +343,16 @@ def main():
     logger.info(
         f"Time Taken Predict CDF: {np.average(time_taken_predict_cdf_list) * 1000} ms"
     )
+
+    # save x_train and y_train to a numpy array
+    x_train_np = np.array(x_train_list)
+    y_train_np = np.array(y_train_list)
+
+    npy_path = get_data_path(DataPathDir.NPY_FILES, dataset_type.value)
+    npy_path.mkdir(parents=True, exist_ok=True)
+    # save as numpy array
+    np.save(npy_path / "x_train.npy", x_train_np)
+    np.save(npy_path / "y_train.npy", y_train_np)
 
     df1 = pd.DataFrame(dict_list)
 
