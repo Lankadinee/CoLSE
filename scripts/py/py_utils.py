@@ -105,7 +105,8 @@ def run_excel_to_est_csv():
 
 if __name__ == "__main__":
     excel_to_estimates_csv(
-        excel_path="/datadrive500/CoLSE/data/excels/correlated_06/dvine_v1_correlated_06_test_sample_notq_20000_9.xlsx",
-        estimates_path="/datadrive500/CoLSE/workloads/correlated_06/estimates/colse_20000_9.csv",
-        no_of_rows=10000,
+        excel_path="/datadrive500/CoLSE/data/excels/dmv/dvine_v1_dmv_test_sample_notq_20000_7.xlsx",
+        estimates_path="/datadrive500/CoLSE/workloads/dmv/estimates/colse_20000_7.csv",
+        # no_of_rows=10000000,
+        no_of_rows=11591877,
     )
