@@ -48,10 +48,10 @@ def parse_args():
         description="Run Divine Copula Dynamic Recursive Test"
     )
     parser.add_argument(
-        "--data_split", type=str, default="train", help="Path to the testing Excel file"
+        "--data_split", type=str, default="test", help="Path to the testing Excel file"
     )
     parser.add_argument(
-        "--dataset_name", type=str, default="forest", help="Name of the dataset"
+        "--dataset_name", type=str, default="dmv", help="Name of the dataset"
     )
     parser.add_argument(
         "--max_unique_values",
@@ -273,7 +273,7 @@ def main():
         if np.isnan(y_bar):  # or np.isnan(y_bar_2):
             nan_count += 1
             continue
-        q_error = qerror(y_bar, y_act, no_of_rows=no_of_rows)
+        q_error = qerror(est_card=y_bar, card=y_act, no_of_rows=no_of_rows)
         mapped_query = s_dequantize.get_mapped_query(query, COLUMN_INDEXES)
         # logger.info(f"Prediction: {y_bar} Mapped query: {mapped_query}")
         if not any(mapped_query):
@@ -289,7 +289,7 @@ def main():
                 y_bar_2 = error_comp_model.inference(
                     query=mapped_query, cdf=cdf_list, y_bar=y_bar
                 )[0]
-                q_error_2 = qerror(y_bar_2, y_act, no_of_rows=None)
+                q_error_2 = qerror(est_card=y_bar_2, card=y_act, no_of_rows=None)
         else:
             q_error_2 = None
             y_bar_2 = None
