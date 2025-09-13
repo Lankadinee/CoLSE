@@ -65,7 +65,7 @@ class Prerequisists:
     It will also create the directories for the dataset.
     """
 
-    EXTERNAL_PRED_PATH = Path("/datadrive500/AreCELearnedYet")
+    EXTERNAL_PRED_PATH = Path("/datadrive500/AreCELearnedYetForked")
     def __init__(self, dataset_name: str, model_name: str, up_wl_type: str):
 
         self.dataset_name: DatasetNames = DatasetNames(dataset_name)
@@ -97,7 +97,7 @@ class Prerequisists:
         # prediction paths
         if self.model_name.is_ours():
             if self.update_type:
-                pattern = str(CURRENT_DIR / f"data/excels/*{self.dataset_name}_test_sample_*{self.update_type}*")
+                pattern = str(CURRENT_DIR / f"data/excels/{self.dataset_name}/*{self.dataset_name}_test_sample_*{self.update_type}*")
                 self.prediction_paths_source = [Path(p) for p in glob(pattern)]
                 no_of_predictions = len(self.prediction_paths_source)
                 assert no_of_predictions < 4, f"You cannot have more than 4 predictions for our model got [{no_of_predictions}]s - {self.prediction_paths_source}"
