@@ -32,8 +32,8 @@ class DivineCopulaDynamicRecursive:
 
     @staticmethod
     def get_key(name_1, name_2):
-        column_id_1 = int(name_1.split("_")[0])
-        column_id_2 = int(name_2.split("_")[0])
+        column_id_1 = name_1
+        column_id_2 = name_2
         col_list = [column_id_1 - 1, column_id_2 - 1]
         col_list.sort()
         return tuple(col_list)
@@ -93,8 +93,8 @@ class DivineCopulaDynamicRecursive:
         logger.info(f"Column List : {column_list}") if self.verbose else None
 
         if len(lb_ub_list) == 4:
-            theta = self.get_theta_value(f"{column_list[0]}_T", f"{column_list[1]}_T")
-            copula_type = self.get_copula_type(f"{column_list[0]}_T", f"{column_list[1]}_T")
+            theta = self.get_theta_value(column_list[0], column_list[1])
+            copula_type = self.get_copula_type(column_list[0], column_list[1])
             lb_lb = get_copula(copula_type, cdf1=lb_ub_list[0], cdf2=lb_ub_list[2], theta=theta)
             lb_ub = get_copula(copula_type, cdf1=lb_ub_list[0], cdf2=lb_ub_list[3], theta=theta)
             ub_lb = get_copula(copula_type, cdf1=lb_ub_list[1], cdf2=lb_ub_list[2], theta=theta)
