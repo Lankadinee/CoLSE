@@ -75,3 +75,10 @@ ex: just prepare-data dmv dvine ind_0.2
 just build-postgres
 ```
 
+## Run experiment for joins
+
+```
+just join <dataset_name>
+```
+
+ex: just join imdb
