@@ -419,13 +419,14 @@ class SplineDequantizer:
 
     def get_converted_cdf(self, query: np.ndarray, column_indexes=None, **kwargs):
         """Convert a query into continuous CDF values."""
-        if column_indexes is None:
+        col_names = kwargs.get("col_names", None)
+        if column_indexes is None and col_names is None:
             column_indexes = [i for i in range(self._dataset_type.get_no_of_columns())]
         cdf_values = []
         categorical_columns = self._dataset_type.get_non_continuous_columns(**kwargs)
         pairwise_query = query.reshape(-1, 2)
         for idx, (value_lb, value_ub) in enumerate(pairwise_query):
-            col_name = self._metadata.df_cols[column_indexes[idx]]
+            col_name = self._metadata.df_cols[column_indexes[idx]] if col_names is None else col_names[idx]
             if col_name in categorical_columns:
                 cdf_values.append(self._get_cdf_values_for_cat(col_name, value_lb, ub=False))
                 cdf_values.append(self._get_cdf_values_for_cat(col_name, value_ub, ub=True))
@@ -434,6 +435,15 @@ class SplineDequantizer:
                 cdf_values.append(self._get_cdf_values(col_name, value_ub))
 
         return np.clip(np.array(cdf_values), 0, 1)
+    
+    def get_cdf_value(self, col_name: str, original_value: str, **kwargs) -> float:
+        """
+        Given a column name and a original value, return the cumulative frequency at that value.
+        """
+        if col_name in self._dataset_type.get_non_continuous_columns(**kwargs):
+            return self._get_cdf_values_for_cat(col_name, original_value)
+        else:
+            return self._get_cdf_values(col_name, original_value)
 
     # this is public method
     def get_mapped_query(self, query, column_indexes=None, **kwargs):

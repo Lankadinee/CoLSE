@@ -41,6 +41,8 @@ def get_all_columns():
         "movie_info_idx:info_type_id",
     ]
 
+def get_column_index(table_name, column_name):
+    return TABLE_COLS[table_name].index(column_name)
 
 def get_queries_imdb(**kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[str]]:
 

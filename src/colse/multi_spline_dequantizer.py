@@ -1,3 +1,4 @@
+from typing import Tuple
 import numpy as np
 import pandas as pd
 
@@ -75,3 +76,24 @@ class MultiSplineDequantizer:
             dummy_query = self.dc_param_values[table_name].get_min_max_normalized_lb_ub(dummy_query)[2:]
             full_mapped_query[indexes] = dummy_query
         return full_mapped_query
+    
+    def get_mapped_values(self, table_name, column_name, value):
+        if self.dataset_type == DatasetNames.IMDB_DATA:
+            from colse.datasets.dataset_imdb import get_column_index
+            column_index = get_column_index(table_name, column_name)
+            return self.dequantizers[table_name].get_mapped_query(np.array([[value]]), column_indexes=[column_index], table_name=table_name)
+        else:
+            raise ValueError(f"Dataset {self.dataset_type} not supported")
+        
+    # def interval(self, table_name, column_name, lb, ub):
+    #     assert lb <= ub, f"LB {lb} is greater than UB {ub}"
+    #     cdf_lb = self.dequantizers[table_name].get_cdf_value(col_name=column_name, original_value=lb, table_name=table_name)
+    #     cdf_ub = self.dequantizers[table_name].get_cdf_value(col_name=column_name, original_value=ub, table_name=table_name)
+    #     assert lb == ub or cdf_lb <= cdf_ub, f"CDF LB {cdf_lb} is greater than CDF UB {cdf_ub}"
+    #     return cdf_lb, cdf_ub
+    
+    def interval(self, table_name: str, column_name: str, lb: float, ub: float) -> Tuple[float, float]:
+        assert lb <= ub, f"LB {lb} is greater than UB {ub}"
+        query = np.array([[lb, ub]])
+        cdf = self.dequantizers[table_name].get_converted_cdf(query, column_indexes=None, col_names=[column_name], table_name=table_name)
+        return cdf[0], cdf[1]
